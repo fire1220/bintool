@@ -7,4 +7,10 @@
 
 ## 案例
 
+- dev命令：
+
 ![dev](.img/dev.png)
+
+rancherlogin命令：
+
+![rancherlogin](../Downloads/rancherlogin.png)
