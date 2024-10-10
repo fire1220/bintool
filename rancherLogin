@@ -1,0 +1,1211 @@
+#!/bin/bash 
+
+# rancher server login
+# author ZhouJiandong
+# date 2024-08-03
+# update 2024-09-02 11:45:09
+
+# configuration
+# isUseRlwrap : Try to use enhanced interaction.
+# envFilePathList : Environment variable file for storing data, which is used with priority from left to right in many cases.
+# podListType : pod list style: 0 no style, 1 interlaced color change, 2 different prefixes color change, 3 prefixes with high bright words.
+# podNameSuffixNum : The number of random suffixes of # pod name, for example, WM-light-backend-6ff6c7ddb7-jhb9m is 2.
+# podNameGroupSeparator : pod name separator, for example, WM-light-backend-6ff6c7ddb7-jhb9m is "-"
+readonly isUseRlwrap=true                           # 尽量使用增强交互
+readonly envFilePathList=("~/.rancherlogin.env")    # 存放数据的环境变量文件，多个时是从左到右优先权限使用
+readonly podListType=3                              # pod列表样式：0无样式，1隔行换色，2不同前缀换色，3前缀为高亮色字
+readonly podNameSuffixNum=2                         # pod名称随机后缀的个数,例如：wm-light-backend-6ff6c7ddb7-jhb9m 是 2
+readonly podNameGroupSeparator="-"                  # pod名称分隔符,例如：wm-light-backend-6ff6c7ddb7-jhb9m是"-"
+
+# dependency package
+pkgRancher='rancher'                                                # Dependency package
+baseCommandList=('sed' 'grep' 'awk' 'wc')                           # Dependency package
+commandList=${baseCommandList[@]} && commandList+=("$pkgRancher")   # Dependency package list
+# (Optional package) Enhanced interactive software, you can use the arrow keys to view the history and locate.
+readonly rlwrapCommandName="rlwrap"                                 # (可选包)增强交互软件，可以使用方向键查看历史和定位
+
+# constant
+readonly isLoading="VAR_IS_LOADING"
+readonly varIsFastEntry="CONST_IS_FAST_ENTRY"
+readonly envNamespacename="CONST_NAMESPACE_NAME"
+
+
+isRlwrap=false
+envPath=""
+for v in ${envFilePathList[@]}; do
+    dirPath="$v"
+    filePath="$v"
+    if [[ "$dirPath" =~ "/" ]] ;then
+        if [[ "${dirPath:0:1}" == "~" ]] ;then
+            dirPath="$(echo ~)${dirPath#*~}"
+            filePath="$dirPath"
+        fi
+        dirPath="${dirPath%/*}"
+    else
+        dirPath="."
+    fi
+    if [ -w "${dirPath}/" ] ;then
+        envPath="$filePath"
+        break
+    fi
+done
+
+tempVarPath="$(mktemp)"
+
+readonly tempVarPath
+readonly envPath
+
+deferExec="$(cat <<!
+    if [ -f '$tempVarPath' ] ;then
+        rm -r '$tempVarPath';
+    fi
+!
+)"
+trap "$deferExec" EXIT
+trap "$deferExec" ERR
+
+function helpEN() {
+    if [[ "$1" == "-h" ]];then
+        cat <<!
+        parameter:
+            -t      Enter test mode
+
+!
+    fi
+    cat <<!
+    Commonly used instructions:
+        *           Query all, or enter keyword search.
+        :set val    Set keywords for the current namespace or pod search.
+                    Each namespace can set the search keywords of pod separately.
+                    Enter again after the setting is successful, and the set value will be used for search.
+                    :set "" or :set '' Indicates the empty setting.
+        :get        Gets the keyword of the current namespace or pod setting.
+        :get all    Query all configurations
+
+    Other notes:
+        1. Only one line of output is entered directly.
+        2. Enter keywords or * search
+        3. If no search results are found, pressing Enter again will pull all the lists.
+        4. If there is no pod in the namespace, press Enter again to return to the namespace list.
+!
+}
+
+function helpCN() {
+    if [[ "$1" == "-h" ]];then
+        cat <<!
+        参数：
+            -t      进入测试模式，里面所有数据都是假的，用于演示
+
+!
+    fi
+    cat <<!
+    常用指令：
+        *           查询所有，或输入关键词搜索
+        :set val    设置当前namespace或pod搜索的关键词
+                    每个namespace可以单独设置pod的搜索关键词
+                    设置成功后再次回车则会利用设置的值进行搜索
+                    :set "" 或 :set '' 表示清空设置
+        :get        获取当前namespace或pod设置的关键词
+        :get all    查询所有配置
+
+    其他说明：
+        1.只有一行输出是直接回车则会进入
+        2.输入关键词或者*搜索
+        3.如果没有搜索到结果时，再次回车会拉取全部列表
+        4.如果namespace里没有pod是，再次回车会返回到namespace列表
+!
+}
+
+function help(){
+    isChina=false
+    lang=$(echo $LANG)
+    if [[ "$lang" == "zh_CN.UTF-8" ]];then
+        isChina=true
+    fi
+    if $isChina;then
+        helpCN
+    else
+        helpEN
+    fi
+}
+
+if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]];then
+    help '-h'
+    exit 0
+fi
+
+isTest=false
+if [[ "$1" == "-t" ]];then
+    commandList=${baseCommandList[@]}
+    echo -e "\033[31;43mTest mode\033[0m"
+    isTest=true
+fi
+
+if [[ "$1" == "--debug" ]];then
+    echo "$tempVarPath"
+fi
+
+function getSetEnv(){
+    local prefix="RANCHER_KUBE_"
+    local isGet=true
+    local name=""
+    local value=""
+    local getAll=false
+    local filePath="$envPath"
+    local isPop=false
+    local tempVal=false
+
+    OPTIND=1
+    while getopts 'v:n:sapt' OPT; do
+        case $OPT in
+            n)
+                name="$OPTARG" ;;
+            v)
+                value="$OPTARG" ;;
+            s)
+                isGet=false ;;
+            a)
+                getAll=true ;;
+            p)
+                isPop=true ;;
+            t)
+                tempVal=true ;;
+        esac
+    done
+    shift $((OPTIND-1))
+    if [[ "$name" == "" ]] ;then
+        return 0
+    fi
+
+    if $tempVal ;then
+        filePath="$tempVarPath"
+        prefix="VARIABLE_"
+    fi
+
+    local tempEnv=$(. $filePath 2>&1)
+    if [[ "$tempEnv" != "" ]];then
+        echo "" > "$filePath"
+        return 0
+    fi
+
+    name=${name//-/_}
+    name="$(echo "$name" | sed 's/[^a-zA-Z_]//g')"
+    name="${prefix}${name}"
+    if $isGet;then
+        if [ ! -f "$filePath" ];then
+            return 0
+        fi
+        if $getAll ;then
+            cat $filePath
+            return 0
+        fi
+        # grep -E "^$name=" $filePath > /dev/null || {
+        #     echo ""
+        #     return 0
+        # }
+        . $filePath
+        eval "echo \$$name"
+        if $isPop ;then
+            local temp=$(grep -Ev "^$name=" $filePath) && echo "$temp" > $filePath
+        fi
+        return 0
+    fi
+
+    if [[ "$value" == "" ]] ;then
+        if [ -f "$filePath" ] ;then
+            . $filePath
+            if [[ "$(eval "echo \$$name")" == "" ]];then
+                return 0
+            fi
+            local evnValue="$(eval "sed 's/^$name=\".*\"$/$name=\"\"/' $filePath")"
+            echo "$evnValue" > $filePath
+        fi
+        return 0
+    fi
+
+    if [ ! -f "$filePath" ] || [[ "$(grep "^$name=" $filePath)" == "" ]];then
+        echo "$name=\"$value\"" >> $filePath
+    else
+        . $filePath
+        if [[ "$(eval "echo \$$name")" == "$value" ]];then
+            echo $value
+            return 0
+        fi
+        local evnValue="$(eval "sed 's/^$name=\".*\"$/$name=\"$value\"/' $filePath")"
+        echo "$evnValue" > $filePath
+    fi
+    echo $value
+    return 0
+}
+
+function loading(){
+    local isClose=false
+    if (($#>0));then
+        OPTIND=1
+        while getopts 'c' OPT; do
+            case $OPT in
+                c)
+                    isClose=true
+                ;;
+            esac
+        done
+        shift $((OPTIND-1))
+    fi
+    if $isClose;then
+        local loadingClose=$(getSetEnv -p -t -n "$isLoading")
+        if [[ "$loadingClose" != "" ]];then
+            sleep 0.1
+        fi
+        return 0
+    fi
+    getSetEnv -s -t -n "$isLoading" -v "true" > /dev/null
+    arr=('-' '\' '|' '/')
+    j=0
+    echo -en "\033[?25l"
+    for ((i=0;$i<300;i++));do
+        local loadVar=$(getSetEnv -t -n "$isLoading")
+        if [[ "$loadVar" != "" ]] && $loadVar ;then
+            if [[ $j > 3 ]];then
+                j=0
+            fi
+            printf "\b%s" ${arr[$j]}
+            ((j+=1))
+            sleep 0.05
+        else
+            break
+        fi
+    done
+    printf "\b "
+    printf "\b"
+    echo -en "\033[?25h"
+}
+
+function printHead(){
+    loading -c
+    if (( $# < 1)) ;then
+        return 0
+    fi
+    local title=""
+    local titleColor=""
+    local numTab=0
+    local separate=""
+    local separateColor=""
+    local len=50
+    local newline=false
+    OPTIND=1
+    while getopts 't:T:s:S:l:n:N' OPT; do
+        case $OPT in
+            t)
+                title="$OPTARG" ;;
+            T)
+                titleColor="$OPTARG" ;;
+            s)
+                separate="$OPTARG" ;;
+            S)
+                separateColor="$OPTARG" ;;
+            l)
+                len="$OPTARG" ;;
+            n)
+                numTab="$OPTARG" ;;
+            N)
+                newline=true ;;
+        esac
+    done
+    shift $((OPTIND-1))
+
+    if $newline;then
+        echo ""
+    fi
+    if [[ "$title" != "" ]];then
+        local tabStr=""
+        if [[ $numTab =~ ^[0-9]+$ ]];then
+            local i
+            for (( i=0; i<$numTab; i++ ));do
+                tabStr="$tabStr "
+            done
+        fi
+        if [[ "$titleColor" =~ ^[34][0-7](;[34][0-7])?$ ]];then
+            echo -e "${tabStr}\033[${titleColor}m${title}\033[0m"
+        else
+            echo -e "${tabStr}$title"
+        fi
+    fi
+    if [[ "$separate" != "" ]];then
+        local temp="  "
+        local i
+        for (( i=0; $i < $len; i++)); do
+            temp="${temp}${separate}"
+        done
+        if [[ "$separateColor" =~ ^[34][0-7](;[34][0-7])?$ ]];then
+            echo -e "\033[${separateColor}m$temp\033[0m"
+        else
+            echo "$temp"
+        fi
+    fi
+    return 0
+}
+
+function checkCommand(){
+    local commandStr=""
+    for k in ${commandList[*]}; do
+        command -v "$k" > /dev/null 2>&1 || {
+            if [[ "$k" == "$pkgRancher" ]];then
+                k="${pkgRancher}-cli"
+            fi
+            commandStr="${commandStr} ${k}"
+        }
+    done
+    local returnNum=1
+    if $isUseRlwrap; then
+        if [[ "$commandStr" == "" ]];then
+            if command -v "$rlwrapCommandName" > /dev/null 2>&1 ;then
+                isRlwrap=true
+            else
+                commandStr=" $rlwrapCommandName"
+                returnNum=0
+            fi
+        else
+            if command -v "$rlwrapCommandName" > /dev/null 2>&1 ;then
+                isRlwrap=true
+            else
+                commandStr="${commandStr} $rlwrapCommandName"
+            fi
+        fi
+    fi
+    if [[ "$commandStr" == "" ]];then
+        return 0
+    fi
+    local prefixList=()
+    local suffixInfo=""
+    case "$(uname)" in
+        "Darwin")
+            prefixList=("brew install" "sudo port install")
+            suffixInfo="$(cat <<!
+        brew：https://brew.sh
+        port：https://www.macports.org
+!
+)"
+        ;;
+        "Linux")
+            if [ -f /etc/debian_version ]; then
+                prefixList=("apt install")
+            elif [ -f /etc/redhat-release ]; then
+                prefixList=("yum install")
+            elif [ -f /etc/SuSE-release ]; then
+                prefixList=("zypper install")
+            fi
+        ;;
+    esac
+
+    if [ ${#prefixList[@]} -gt 0 ] ;then
+        if [[ "$returnNum" == "0" ]];then
+            printHead -t "Need this command to install for a better experience：$commandStr" -n 4
+        else
+            printHead -t "Installation required：$commandStr" -n 4
+        fi
+        printHead -t "You can execute the following command to install it：" -n 4
+        local i
+        for (( i=0; i<${#prefixList[@]}; i++ ));do
+            if (($i > 0)) ;then
+                printHead -t "or：" -n 8
+            fi
+            printHead -t "${prefixList[$i]}${commandStr}" -n 8
+        done
+    else
+        printHead -t "Installation required：$commandStr" -n 4
+    fi
+    printHead -t "$suffixInfo" -N
+    printHead -s '=' -N
+    return $returnNum
+}
+
+checkCommand
+if [[ "$?" != "0" ]];then
+    exit 1
+fi
+
+help
+printHead -s "=" -N -l 118
+
+function printNamespaceList(){
+    local namespaceList="$1"
+    local namespaceCount="$2"
+    local keyWorld="$3"
+    if [[ "$namespaceList" == "" ]] ;then
+        printHead -t "no have namespace"
+        return 0
+    fi
+    if (( $namespaceCount == 0 ));then
+        printHead -t "no have namespace!"
+        return 0
+    fi
+    local titleTemp=""
+    if (($namespaceCount == 1));then
+        titleTemp="(Enter)"
+    fi
+    if [[ "$keyWorld" != "" ]];then
+        keyWorld="【 key world: \033[33m$keyWorld\033[0m 】"
+    fi
+    printHead -n 4 -t "namespace list $keyWorld $titleTemp" -s "-" -N
+    echo "$namespaceList"
+    return 0
+}
+
+# get namespace list
+function getNamespaceList(){
+    local namespaceNameSearch="$1"
+    local namespaceListInfo=""
+    if [[ "$isTest" == "true" ]] ;then
+        namespaceListInfo="$testDataNamespaceListInfo"
+    else
+        # data format：
+        # NAME                          STATUS   AGE
+        # cattle-fleet-system           Active   116d
+        # cattle-impersonation-system   Active   116d
+        namespaceListInfo="$(rancher kubectl get namespaces 2>&1)" || {
+            printHead -t "Execution failed" -T 33 -s "=" -n 18
+            printHead -t "error info：" -n 4
+            printHead -t "$namespaceListInfo" -n 8 -T 31
+            if [[ "$namespaceListInfo" =~ "login" ]];then
+                printHead -t "Login operation is required：" -n 4
+                printHead -t "rancher login 'your url' --token 'your token'" -n 8 -T33
+            fi
+            printHead '='
+            return 1
+        }
+    fi
+    local awkData="$(cat <<'EOT'
+    BEGIN{
+        isHeader=false
+        num=0
+    }$1~namespaceNameSearch{
+        num++
+        if (NR == 1 && $1 == "NAME" && $2 == "STATUS" && $3 == "AGE" ){
+            isHeader=true
+        }
+        if (isHeader) {
+            if (NR == 1) {
+                printf "%6s %s\n" ,"INDEX", $0
+            }else{
+                printf "%6s %s\n" ,num-1, $0
+            }
+        } else {
+            printf "%6s %s\n" ,num, $0
+        }
+    }
+EOT
+)"
+    local awkDataSimple="$(cat <<'EOT'
+    {
+        if (NR == 1) {
+            printf "%6s %s\n" ,"INDEX", $0
+        }else{
+            printf "%6s %s\n" ,NR-1, $0
+        }
+    }
+EOT
+)"
+    local namespaceList=""
+    if [[ "$namespaceNameSearch" == "" ]];then
+        namespaceList=$(echo "$namespaceListInfo" | awk "$awkDataSimple")
+    else
+        namespaceList=$(echo "$namespaceListInfo" | awk -v namespaceNameSearch="$namespaceNameSearch" "$awkData")
+    fi
+    echo "$namespaceList"
+    return 0
+}
+
+function getNamespaceCount(){
+    local namespaceList="$1"
+    if [[ "$namespaceList" == "" ]];then
+        echo 0
+        return 0
+    fi
+    namespaceCount=$(($(echo "$namespaceList" | awk '{if (NR != 1 || $2 != "NAME" || $3 != "STATUS" || $4 != "AGE" ) { print $0 } }' | wc -l)))
+    echo $(($namespaceCount))
+    return 0
+}
+
+# get namespace name
+function selectNamespaceName(){
+    local envName="$envNamespacename"
+    local namespaceCount=0
+    local isRefresh=false
+    local setValSearch=""
+    local namespaceNameSearch="$(getSetEnv -n "$envName")"
+    local namespaceListInfo=""
+    local namespaceList=""
+
+    namespaceList=$(getNamespaceList "$namespaceNameSearch") || {
+        echo "$namespaceList"
+        return 1
+    }
+    namespaceCount=$(getNamespaceCount "$namespaceList") || {
+        echo "$namespaceCount"
+        return 1
+    }
+    if (($namespaceCount==0)) ;then
+        isRefresh=true
+    fi
+    printNamespaceList "$namespaceList" "$namespaceCount" "$namespaceNameSearch"
+    local readDefault=""
+    if (( $namespaceCount > 0 ));then
+        readDefault="select namespace number [1-$namespaceCount]："
+    else 
+        readDefault="Enter * or keywords："
+    fi
+    while read -p "$readDefault" -r row; do
+        if [[ "$row" == "exit" ]];then
+            isExit=true
+            if $isRlwrap ; then
+                getSetEnv -s -t -n "VAR_IS_EXIT" -v "true" > /dev/null
+            fi
+            return 0
+        fi
+        if [[ "$row" =~ ^:set ]];then
+            local value=""
+            if [[ "$row" =~ " " ]];then
+                value=${row##* }
+            fi
+            if [[ "$value" == "" ]];then
+                printHead -t "Setting failed, missing parameters. If cleared: parameter is''or\"\""
+                continue
+            fi
+            if [[ "$value" == '""' ]];then
+                value="''"
+            fi
+            value=${value#\"}
+            value=${value%\"}
+            setValSearch=$(getSetEnv -s -n "$envName" -v "$value")
+            getSetEnv -s -n "$varIsFastEntry" -v "false" > /dev/null
+            if [[ "$?" == "0" ]];then
+                if [[ "$value" == "" ]];then
+                    printHead -t "$envName Delete successfully"
+                else
+                    printHead -t "$envName Setting successful, press enter to search again"
+                fi
+            else
+                printHead -t "$envName Setting failed"
+            fi
+            continue
+        fi
+        if [[ "$row" =~ ^:get ]]; then
+            local value=""
+            if [[ "$row" =~ " " ]];then
+                value=${row##* }
+            fi
+            if [[ "$value" == "all" ]];then
+                getSetEnv -n "$envName" -a
+                continue
+            fi
+            echo "$envName="$(getSetEnv -n "$envName")""
+            continue
+        fi
+        if [[ "$row" == "" ]];then
+            if $isRefresh ;then
+                namespaceNameSearch=""
+                namespaceList=$(getNamespaceList) || {
+                    echo "$namespaceList"
+                    return 1
+                }
+                namespaceCount=$(getNamespaceCount "$namespaceList") || {
+                    echo "$namespaceCount"
+                    return 1
+                }
+                isRefresh=false
+                if (($namespaceCount==0));then
+                    printHead -t "no namespace data available"
+                    return 1
+                fi
+                readDefault="select namespace number [1-$namespaceCount]："
+            elif [[ "$setValSearch" != "" ]];then
+                namespaceList=$(getNamespaceList "$setValSearch") || {
+                    echo "$namespaceList"
+                    return 1
+                }
+                namespaceCount=$(getNamespaceCount "$namespaceList") || {
+                    echo "$namespaceCount"
+                    return 1
+                }
+                namespaceNameSearch="$setValSearch"
+                setValSearch=""
+                if (( $namespaceCount == 0 ));then
+                    isRefresh=true
+                    readDefault="Enter * or keywords："
+                    printNamespaceList "$namespaceList" "$namespaceCount" "$namespaceNameSearch"
+                    continue
+                fi
+                readDefault="select namespace number [1-$namespaceCount]："
+            elif (( $namespaceCount == 1 ));then
+                namespaceName=$(echo "$namespaceList" | awk '{print $2}')
+                if $isRlwrap ; then
+                    getSetEnv -s -t -n "VAR_NAMESPACE_NAME" -v "$namespaceName" > /dev/null
+                fi
+                namespaceSearchName=$(getSetEnv -n "$envNamespacename")
+                if [[ "$namespaceSearchName" != "" ]] && [[ "$namespaceName" == "$namespaceSearchName" ]];then
+                    getSetEnv -s -n "$varIsFastEntry" -v "true" > /dev/null
+                fi
+                return 0
+            fi
+            printNamespaceList "$namespaceList" "$namespaceCount" "$namespaceNameSearch"
+            continue
+        fi
+        local num=$(echo "$row" | grep -Eo '[0-9]+')
+        if [[ "$num" != "$row" ]];then
+            if [[ "$row" == "*" ]];then
+                namespaceNameSearch=""
+                namespaceList=$(getNamespaceList) || {
+                    echo "$namespaceList"
+                    return 1
+                }
+            else
+                namespaceNameSearch="$row"
+                namespaceList=$(getNamespaceList "$namespaceNameSearch") || {
+                    echo "$namespaceList"
+                    return 1
+                }
+            fi
+            namespaceCount=$(getNamespaceCount "$namespaceList") || {
+                echo "$namespaceCount"
+                return 1
+            }
+            if (( $namespaceCount == 0 ));then
+                isRefresh=true
+                readDefault="Enter * or keywords："
+                printNamespaceList "$namespaceList" "$namespaceCount" "$namespaceNameSearch"
+                continue
+            fi
+            readDefault="select namespace number [1-$namespaceCount]："
+            printNamespaceList "$namespaceList" "$namespaceCount" "$namespaceNameSearch"
+            continue
+        fi
+        if (($num < 1)) || (($num > $namespaceCount)) ;then
+            printHead -t "select namespace number：[1-$namespaceCount]"
+            continue
+        fi
+        break
+    done
+    namespaceName=$(echo "$namespaceList" | awk -v num="$num" '{if ($1 == num) { print $2} }')
+    if $isRlwrap ; then
+        getSetEnv -s -t -n "VAR_NAMESPACE_NAME" -v "$namespaceName" > /dev/null
+    fi
+    return 0
+}
+
+function getNamespaceName(){
+    if $isRlwrap ; then
+        getSetEnv -s -t -n "VAR_RETURN_ERROR_CODE" -v "0" > /dev/null
+    fi
+    selectNamespaceName || {
+        if $isRlwrap ; then
+            getSetEnv -s -t -n "VAR_RETURN_ERROR_CODE" -v "1" > /dev/null
+        fi
+        return 1
+    }
+    return 0
+}
+
+# get pod list
+function getPodList(){
+    local namespaceName="$1"
+    if [[ "$namespaceName" == "" ]];then
+        echo "parameter error, no namespaceName"
+        return 1
+    fi
+    local selectPodKeyWork="$2"
+    local podList=""
+    local awkData="$(cat <<'EOT'
+        BEGIN{
+            isHeader=false
+            num=0
+        }$1~selectPodKeyWork{
+            num++
+            if (NR == 1 && $1 == "NAME" && $2 == "READY" && $3 == "STATUS" && $4 == "RESTARTS" && $5 == "AGE" ){
+                isHeader=true
+            }
+            if (isHeader) {
+                if (NR == 1) {
+                    printf "%6s %s\n", "INDEX", $0
+                } else {
+                    printf "%6s %s\n", num-1, $0
+                }
+            } else {
+                printf "%6s %s\n", num, $0
+            }
+        }
+EOT
+)"
+    local awkDataSimple="$(cat <<'EOT'
+    {
+        if (NR == 1) {
+            printf "%6s %s\n", "INDEX", $0
+        } else {
+            printf "%6s %s\n", NR-1, $0
+        }
+    }
+EOT
+)"
+    if $isTest ;then
+        podInfo="$testDataPodListInfo"
+    else
+        # data format：
+        # NAME                                                          READY   STATUS              RESTARTS   AGE
+        # contract-go-v-c797f9c58-rjpc8                                 1/1     Running             0          323d
+        # cq-backend-api-85644b6b59-kbjss                               1/1     Running             0          7d23h
+        # cq-enterprise-7b57b845f9-v657n                                0/1     ContainerCreating   0          82d
+        podInfo=$(rancher kubectl get pods -n "$namespaceName" 2>&1) || {
+            printHead -t "execution failed" -T 33 -s "=" -n 18
+            printHead -t "error info：" -n 4
+            printHead -t "$podInfo" -n 8 -T 31
+            printHead '='
+            return 1
+        }
+    fi
+    if [[ "$podInfo" =~ ^"No resources found" ]];then
+        echo ""
+        return 0
+    fi
+    if [[ "$selectPodKeyWork" == "" ]];then
+        podList=$(echo "$podInfo" | sort -n | awk "$awkDataSimple")
+    else
+        podList=$(echo "$podInfo" | sort -n | awk -v selectPodKeyWork="$selectPodKeyWork" "$awkData")
+    fi
+    echo "$podList"
+    return 0
+}
+
+function getPodCount(){
+    local podList="$1"
+    local podCount=0
+    if [[ "$podList" == "" ]];then
+        echo $podCount
+        return 0
+    fi
+    podCount=$(($(echo "$podList" | awk '{if (NR != 1 || $2 != "NAME" || $3 != "READY" || $4 != "STATUS" || $5 != "RESTARTS" || $6 != "AGE" ) { print $0 } }' | wc -l)))
+    echo "$podCount"
+    return 0
+}
+
+# Get pod name
+function selectPodName() {
+    local isRefresh=false
+    local envName="CONST_POD_NAME_${namespaceName}"
+    local selectPodKeyWork=""
+    local setValSearch=""
+    local podCount=0
+    local podList=""
+    local envIsCachePodList="CONST_POD_LIST_IS_CACHE"
+    selectPodKeyWork="$(getSetEnv -n "$envName")" || {
+        echo "Failed to obtain configuration content-$selectPodKeyWork"
+        selectPodKeyWork=""
+    }
+    podList=$(getPodList "$namespaceName" "$selectPodKeyWork") || {
+        echo "$podList"
+        return 0
+    }
+    podCount=$(getPodCount "$podList") || {
+        echo "$podCount"
+        return 0
+    }
+    if (($podCount==0)) ;then
+        isRefresh=true
+    fi
+    printPodList "$podList" "$selectPodKeyWork"
+    local readDefault=""
+    if (( $podCount > 0 ));then
+        readDefault="select pod number [1-$podCount]："
+    else 
+        if [[ "$selectPodKeyWork" == "" ]];then
+            isGoBackNamespace=true
+            if $isRlwrap ; then
+                getSetEnv -s -t -n "VAR_IS_GO_BACK_NAMESPACE" -v "true" > /dev/null
+            fi
+            return 0
+        else
+            readDefault="Enter * or keywords："
+        fi
+    fi
+    while read -p "$readDefault" -r row; do
+        if [[ "$row" == "exit" ]];then
+            isGoBackNamespace=true
+            if $isRlwrap ; then
+                getSetEnv -s -t -n "VAR_IS_GO_BACK_NAMESPACE" -v "true" > /dev/null
+            fi
+            return 0
+        fi
+        if [[ "$row" =~ ^--cache ]];then
+            $(getSetEnv -s -n "$envIsCachePodList" -v "true")
+            printHead -t "Setting successful, press enter to search again"
+            continue
+        fi
+        if [[ "$row" =~ ^--nocache ]];then
+            $(getSetEnv -s -n "$envIsCachePodList" -p)
+            printHead -t "Setting successful, press enter to search again"
+            continue
+        fi
+        if [[ "$row" =~ ^:set ]];then
+            local value=""
+            if [[ "$row" =~ " " ]];then
+                value=${row##* }
+            fi
+            setValSearch=$(getSetEnv -s -n "$envName" -v "$value")
+            if [[ "$?" == "0" ]];then
+                if [[ "$value" == "" ]];then
+                    printHead -t "$envName Delete successfully"
+                else
+                    printHead -t "$envName Setting successful, press enter to search again"
+                fi
+            else
+                printHead -t "$envName Setting failed"
+            fi
+            continue
+        fi
+        if [[ "$row" =~ ^:get ]]; then
+            local value=""
+            if [[ "$row" =~ " " ]];then
+                value=${row##* }
+            fi
+            if [[ "$value" == "all" ]];then
+                getSetEnv -n "$envName" -a
+                continue
+            fi
+            echo "$envName="$(getSetEnv -n "$envName")""
+            continue
+        fi
+        if [[ "$row" == "" ]];then
+            if $isRefresh ;then
+                selectPodKeyWork=""
+                podList=$(getPodList "$namespaceName") || {
+                    echo "$podList"
+                    return 0
+                }
+                podCount=$(getPodCount "$podList") || {
+                    echo "$podCount"
+                    return 0
+                }
+                isRefresh=false
+                if (($podCount==0));then
+                    printHead -t "No available pod data"
+                    return 1
+                fi
+                readDefault="select pod number [1-$podCount]："
+            elif [[ "$setValSearch" != "" ]];then
+                selectPodKeyWork="$setValSearch"
+                setValSearch=""
+                podList=$(getPodList "$namespaceName" "$selectPodKeyWork") || {
+                    echo "$podList"
+                    return 0
+                }
+                podCount=$(getPodCount "$podList") || {
+                    echo "$podCount"
+                    return 0
+                }
+                if (($podCount==0));then
+                    isRefresh=true
+                    readDefault="Enter * or keywords："
+                    printPodList "$podList" "$selectPodKeyWork"
+                    continue
+                fi
+            elif [[ "$selectPodKeyWork" != "" ]];then
+                isCachePodList="$(getSetEnv -n "$envIsCachePodList")"
+                if [[ "$isCachePodList" == "" ]] || ! $isCachePodList ;then
+                    podList=$(getPodList "$namespaceName" "$selectPodKeyWork") || {
+                        echo "$podList"
+                        return 0
+                    }
+                    podCount=$(getPodCount "$podList") || {
+                        echo "$podCount"
+                        return 0
+                    }
+                    if (($podCount==0));then
+                        isRefresh=true
+                        readDefault="Enter * or keywords："
+                        printPodList "$podList" "$selectPodKeyWork"
+                        continue
+                    fi
+                fi
+            elif (( $podCount == 1 ));then
+                podName=$(echo "$podList" | awk '{print $2}')
+                if $isRlwrap ; then
+                    getSetEnv -s -t -n "VAR_POD_NAME" -v "$podName" > /dev/null
+                fi
+                return 0
+            fi
+            readDefault="select pod number [1-$podCount]："
+            printPodList "$podList" "$selectPodKeyWork"
+            continue
+        fi
+        local num=$(echo "$row"|grep -Eo '[0-9]+')
+        if [[ "$num" != "$row" ]];then
+            if [[ "$row" == "*" ]];then
+                selectPodKeyWork=""
+                podList=$(getPodList "$namespaceName") || {
+                    echo "$podList"
+                    return 0
+                }
+            else
+                selectPodKeyWork="$row"
+                podList=$(getPodList "$namespaceName" "$selectPodKeyWork") || {
+                    echo "$podList"
+                    return 0
+                }
+            fi
+            podCount=$(getPodCount "$podList") || {
+                echo "$podCount"
+                return 0
+            }
+            if (($podCount==0));then
+                isRefresh=true
+                readDefault="Enter * or keywords："
+                printPodList "$podList" "$selectPodKeyWork"
+                continue
+            fi
+            isRefresh=false
+            readDefault="select pod number [1-$podCount]："
+            printPodList "$podList" "$selectPodKeyWork"
+            continue
+        fi
+        if (($num < 1)) || (($num > $podCount)) ;then
+            printHead -t "select pod number：[1-$podCount]"
+            continue
+        fi
+        break
+    done 
+    podName=$(echo "$podList" | awk -v num="$num" '$1==num{print $2}')
+    if $isRlwrap ; then
+        getSetEnv -s -t -n "VAR_POD_NAME" -v "$podName" > /dev/null
+    fi
+    return 0
+}
+
+function printPodList() {
+    local podList="$1"
+    local keyWorld=""
+    if [[ "$2" != "" ]];then
+        keyWorld="【 key world: \033[33m$2\033[0m 】"
+    fi
+    if [[ "$podList" == "" ]] ;then
+        printHead -t "no have pod" -N -n 4
+    else
+        printHead -n 18 -t "pod list 【namespace name: \033[33m${namespaceName}\033[0m】$keyWorld" -s "-" -l 118 -N
+    fi
+    echo "$podList" | awk -v podListType="$podListType" -v podNameGroupSeparator="$podNameGroupSeparator" -v podNameSuffixNum="$podNameSuffixNum" 'BEGIN{
+            previous = ""
+            indexNumber = 0
+        }{
+            prefix=""
+            if (podListType == 2 || podListType == 3) {
+                split($2, arr, podNameGroupSeparator);
+                len=0
+                for (i in arr) {
+                    len++
+                }
+                if (len > podNameSuffixNum) {
+                    len -= podNameSuffixNum
+                }
+                for (i=1;i<=len;i++) {
+                    if (i == 1) {
+                        prefix=arr[i]
+                    } else {
+                        prefix=prefix""podNameGroupSeparator""arr[i]
+                    }
+                }
+            }
+            if (podListType == 3) {
+                pattern=prefix
+                sub(pattern,"\033[32m"prefix"\033[0m",$0)
+            }
+            if (podListType == 1) {
+                if (NR % 2 == 1) {
+                    printf "%-120s%s\n","\033[7m" $0,"\033[0m"
+                } else {
+                    print $0
+                }
+            } else if (podListType == 2) {
+                sub(/[0-9]+$/, "", prefix)
+                if (previous != prefix) {
+                    indexNumber++
+                    previous = prefix
+                }
+                if (indexNumber % 2 == 1) {
+                    printf "%-126s%s\n","\033[7m" $0,"\033[0m"
+                } else {
+                    print $0
+                }
+            } else {
+                print $0
+            }
+        }'
+}
+
+function main() {
+    if [ -f "$envPath" ];then
+        . $envPath
+    fi
+    local namespaceName=""
+    local podName=""
+    local isGoBackNamespace=true   # Do you want to return to the namespace and re execute
+    local isExit=false             # Do you want to exit
+    if $isRlwrap ; then
+        getSetEnv -s -t -n "VAR_IS_EXIT" -v "false" > /dev/null
+    fi
+    local isFastEntry=false # Is it fast to enter
+    local isFirstTime=true  # First execution
+    for ((i=0;$i<3;i++));do
+        if $isGoBackNamespace ;then
+            isGoBackNamespace=false
+            namespaceSearchName=$(getSetEnv -n "$envNamespacename")
+            if $isFirstTime ;then
+                isFastEntry=$(getSetEnv -n "$varIsFastEntry")
+                if [[ "$isFastEntry" == "" ]] ;then
+                    isFastEntry=false
+                fi
+            fi
+            if $isFastEntry && [[ "$namespaceSearchName" != "" ]];then
+                namespaceName="$namespaceSearchName"
+            else
+                loading &
+                i=0 # Reset failure times
+                if $isRlwrap ;then
+                    getSetEnv -s -t -n "VAR_IS_GO_BACK_NAMESPACE" -v "false" > /dev/null
+                    rlwrap -n bash -c "
+                        $(declare -f getNamespaceName);
+                        $(declare -f selectNamespaceName);
+                        $(declare -f getSetEnv);
+                        $(declare -f printHead);
+                        $(declare -f printNamespaceList);
+                        $(declare -f getNamespaceList);
+                        $(declare -f getNamespaceCount);
+                        $(declare -f loading);
+                        envPath='$envPath';
+                        tempVarPath='$tempVarPath';
+                        isTest='$isTest';
+                        testDataNamespaceListInfo='$testDataNamespaceListInfo';
+                        isRlwrap='$isRlwrap';
+                        envNamespacename='$envNamespacename';
+                        varIsFastEntry='$varIsFastEntry';
+                        isLoading='$isLoading';
+                        getNamespaceName"
+                    varReturnErrorInfo=$(getSetEnv -p -t -n "VAR_RETURN_ERROR_CODE")
+                    if [[ "$varReturnErrorInfo" == "" ]];then
+                        varReturnErrorInfo=0
+                    fi
+                    if [[ "$varReturnErrorInfo" != "0" ]] ;then
+                        exit 1
+                    fi
+                    isExit=$(getSetEnv -p -t -n "VAR_IS_EXIT")
+                    if [[ "$isExit" == "" ]];then
+                        isExit=false
+                    fi
+                    namespaceName=$(getSetEnv -p -t -n "VAR_NAMESPACE_NAME")
+                else
+                    selectNamespaceName
+                    if [[ "$?" != "0" ]] ;then
+                        exit 1
+                    fi
+                fi
+
+                if $isExit ;then
+                    exit 0
+                fi
+
+                if [[ "$namespaceName" == "" ]] ;then
+                    printHead -t "No namespaceName obtained"
+                    exit 1
+                fi
+            fi
+        isFirstTime=false
+        isFastEntry=false
+        fi
+
+        loading &
+
+        if $isRlwrap ;then
+            rlwrap -n bash -c "
+                $(declare -f selectPodName);
+                $(declare -f getSetEnv);
+                $(declare -f printHead);
+                $(declare -f printPodList);
+                $(declare -f getPodList);
+                $(declare -f getPodCount);
+                $(declare -f loading);
+                envPath='$envPath';
+                tempVarPath='$tempVarPath';
+                podListType='$podListType';
+                podNameSuffixNum='$podNameSuffixNum';
+                podNameGroupSeparator='$podNameGroupSeparator';
+                isTest='$isTest';
+                testDataPodListInfo='$testDataPodListInfo';
+                isRlwrap='$isRlwrap';
+                envNamespacename='$envNamespacename';
+                namespaceName='$namespaceName';
+                varIsFastEntry='$varIsFastEntry';
+                isLoading='$isLoading';
+                selectPodName"
+            isGoBackNamespace=$(getSetEnv -p -t -n "VAR_IS_GO_BACK_NAMESPACE")
+            if [[ "$isGoBackNamespace" == "" ]];then
+                isGoBackNamespace=false
+            fi
+            podName=$(getSetEnv -p -t -n "VAR_POD_NAME")
+        else
+            selectPodName
+            if [[ "$?" != "0" ]] ;then
+                printHead -t "Program exception, unable to obtain pod"
+                exit 1
+            fi
+        fi
+        if $isGoBackNamespace ;then
+            continue
+        fi
+        if [[ "$podName" == "" ]] ;then
+            printHead -t "No pod obtained"
+            exit 1
+        fi
+        if $isTest ;then
+            echo "Test mode: End"
+            break
+        else
+            if [ -f "$tempVarPath" ] ;then
+                rm -r "$tempVarPath";
+            fi
+            rancher kubectl exec -n "$namespaceName" -it "${podName}" -- /bin/bash
+            # if [[ "$?" == "0" ]];then
+            #     break
+            # fi
+            exit 0
+        fi
+    done
+}
+
+testDataNamespaceListInfo="$(cat <<'EOT'
+    NAME                          STATUS   AGE
+    test                          Active   3y61d
+    cattle-fleet-system           Active   116d
+    dake                          Active   3y92d
+    dushuhui                      Active   3y85d
+    zhongtai                      Active   3y87d
+EOT
+)"
+
+testDataPodListInfo="$(cat <<'EOT'
+    NAME                                                          READY   STATUS              RESTARTS   AGE
+    test-go-v-c797f9c58-rjpc8                                     1/1     Running             0          323d
+    wm-internal-product-center-5fb6bf9766-q58gj                   1/1     Running             0          2y292d
+    wm-internal-sms-center-5b6d469dc6-kr85b                       1/1     Running             0          6d1h
+    wm-light-backend-6d946c7df-fx7lt                              1/1     Running             0          23h
+    wm-light-backend2-57865f4c57-dvxbq                            1/1     Running             0          153d
+    wm-light-frontend-556c56ddf9-2xgpp                            1/1     Running             0          6d6h
+    wm-light-frontend-go-5687b477bc-ql889                         1/1     Running             0          20d
+    wm-light-frontend2-68c49f4dc-zpbkl                            1/1     Running             0          213d
+    wm-light-frontend3-54694f8db5-pv24k                           1/1     Running             0          2y145d
+    wm-light-practice-2-7954b6f8b6-v96bs                          1/1     Running             0          4d7h
+    wm-light-practice-598d85d476-2szpx                            1/1     Running             0          66m
+    wm-live-class-6649c85c78-tmwnz                                1/1     Running             0          39d
+    wm-live-class2-6cbd5d7446-2fmhj                               1/1     Running             0          208d
+    wm-ma-class-center-59cffd7fb5-2crzh                           1/1     Running             0          624d
+    wm-management-course-backend-64cf7556b8-7flmr                 1/1     Running             0          300d
+EOT
+)"
+
+main
+exit 0
