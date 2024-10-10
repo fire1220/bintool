@@ -1,0 +1,5 @@
+head -n 1000 light-frontend.cqslim.cn.access.log | grep "/api/light/target/week/get_target"| awk -F[\"]+ '{print $1, $2, $3}'
+aaaaaa
+ssaa111llaaikss
+aaaaaa
+ss
