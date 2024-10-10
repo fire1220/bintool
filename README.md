@@ -13,4 +13,4 @@
 
 rancherlogin命令：
 
-![rancherlogin](../Downloads/rancherlogin.png)
+![rancherlogin](.img/rancherlogin.png)
