@@ -1,5 +1,5 @@
 # bintool
-> 工具命令，使用Linux和macOS
+> 常用工具命令，使用Linux和macOS
 ## 命令说明
 
 - dev 适用于git把当前分支的修改合并到dev(文件名，可以更改为其他名称)里
