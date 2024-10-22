@@ -1,0 +1,198 @@
+#!/bin/bash
+
+function testA(){
+    echo "hello world$2"
+}
+
+function setFunc(){
+    echo "setFunc$1"
+}
+function getFunc(){
+    echo "getFunc$1"
+}
+
+function listNumRead(){
+    local listData=""
+    local funcName=""
+    local search=""
+    local printFunc=""
+    OPTIND=1
+    while getopts "l:f:s:p:" opt;do
+        case $opt in
+        l)
+            listData="$OPTARG";;
+        f)
+            funcName="$OPTARG";;
+        s)
+            search="$OPTARG";;
+        p)
+            printFunc="$OPTARG";;
+        esac
+    done
+    shift $(($OPTIND-1))
+    if [[ "$listData" == "" ]] || [[ "$funcName" == "" ]] ; then
+        echo "Parameter cannot be empty." >&2
+        return 1
+    fi
+    if [[ "$printFunc" == "" ]];then
+        printFunc="echo"
+    fi
+    while true;do
+        local formatList=$(echo "$listData" | awk -v search="$search" 'BEGIN{num=0}$1~search{ num++; printf "%-5d%s\n",num,$0 }')
+        eval "$printFunc '$formatList'"
+        local countNum="$(echo "$formatList"|wc -l|grep -Eo '[0-9]+')"
+        read -p "select number:" -r row
+        if [[ "$row" == "" ]];then
+            continue
+        fi
+        if [[ "$row" == "*" ]];then
+            search=""
+            continue
+        fi
+        local num=$(echo "$row"|grep -Eo '[0-9]+')
+        if [[ "${row}" == "$num" ]] ;then
+            if (($num < 1)) || (($countNum < $num)) ;then
+                eval "$printFunc 'select range 1-$countNum'"
+                continue
+            fi
+            value="$(echo "$formatList" | awk -v num="$num" '$1==num{print $0}')"
+            eval "$funcName $value"
+            break
+        fi
+        local rowKey="${row%% *}"
+        local rowVal="${row#* }"
+        if [[ "$row" != "$rowKey" ]] && [[ "$rowKey" != "" ]] && [[ "$rowVal" != "" ]] ;then
+            for v in "$@";do
+                local argKey="${v%%=*}"
+                local argFunc="${v#*=}"
+                if [[ "$argKey" == "" ]] || [[ "$argFunc" == "" ]];then
+                    continue
+                fi
+                if [[ "$argKey" == "$rowKey" ]];then
+                    eval "$argFunc $rowVal"
+                    # local temp=$(eval "$argFunc $rowVal")
+                    # if [[ "$temp" != "" ]];then
+                    #     search="${row}"
+                    # fi
+                    continue
+                fi
+            done
+            continue
+        fi
+        search="${row}"
+        continue
+    done
+    return 0
+}
+
+function getsetenv(){
+    local path=""
+    local key=""
+    local val=""
+    OPTIND=1
+    while getopts "p:k:v:" opt;do
+        case "$opt" in
+        p)
+            path="$OPTARG";;
+        k)
+            key="$OPTARG";;
+        v)
+            val="$OPTARG";;
+        esac
+    done
+    shift $(($OPTIND-1))
+    if [[ "$path" == "" ]] ;then
+        echo "没有获取到env路径" >&2
+        return 1
+    fi
+    if [[ "$key" == "" ]] ;then
+        echo "没有获取到key" >&2
+        return 2
+    fi
+    if [[ "$val" == "" ]] ;then
+        if [ -f "$path" ] ;then
+            . "$path"
+            eval "echo \$$key"
+        else
+            echo ""
+        fi
+        return 0
+    fi
+    
+    existsName=$(eval "grep -E '^${key}=\".*\"$' '$path'")
+    context="${key}=\"${val}\""
+    if [[ "$existsName" == "" ]] ;then
+        echo "$context" >> "$path"
+    else
+        newVal=$(eval "sed 's/^${key}=\".*\"$/${key}=\"${val}\"/' '$path'")
+        if [[ "$newVal" != "$context" ]];then
+            echo "$newVal" > "$path"
+        fi
+    fi
+    return 0
+}
+
+function main(){
+    local username=""
+    local passwd=""
+    local hostPath=""
+    local execute=""
+    local database=""
+    local envPath="$HOME/.mysqltable.env"
+    username=$(getsetenv -p "$envPath" -k "CONST_USERNAME") || {
+        echo "$username"
+        exit 1
+    }
+    passwd=$(getsetenv -p "$envPath" -k "CONST_PASSWD") || {
+        echo "$username"
+        exit 1
+    }
+    hostPath=$(getsetenv -p "$envPath" -k "CONST_HOSTPATH") || {
+        echo "$username"
+        exit 1
+    }
+    OPTIND=1
+    while getopts "u:p:h:d:e:" opt;do
+        case $opt in
+        u)
+            username="$OPTARG"
+            $(getsetenv -p "$envPath" -k "CONST_USERNAME" -v "$username") || {
+                echo "$username"
+                exit 1
+            }
+            ;;
+        p)
+            passwd="$OPTARG"
+            $(getsetenv -p "$envPath" -k "CONST_PASSWD" -v "$passwd") || {
+                echo "$username"
+                exit 1
+            }
+            ;;
+        h)
+            hostPath="$OPTARG"
+            $(getsetenv -p "$envPath" -k "CONST_HOSTPATH" -v "$hostPath") || {
+                echo "$username"
+                exit 1
+            }
+            ;;
+        d)
+            database="$OPTARG"
+            ;;
+        e)
+            execute="$OPTARG"
+            ;;
+        esac
+    done
+    shift $(($OPTIND-1))
+    executeMysql="mysql -u'$username' -p'$passwd' -h'$hostPath' -e'show schemas' | awk 'NR>1{print $1}'"
+    # echo "$executeMysql"
+    list="$(eval "$executeMysql")"
+    (listNumRead -l "$list" -s "backend|teaching" -f "testA" :get="getFunc" :set="setFunc") || {
+        echo "$t"
+        exit 1
+    }
+    echo "$t"
+    exit 0
+}
+
+main $@
