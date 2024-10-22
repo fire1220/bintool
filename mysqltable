@@ -9,6 +9,7 @@ function setFunc(){
 }
 function getFunc(){
     echo "getFunc$1"
+    return 128
 }
 
 function listNumRead(){
@@ -37,16 +38,25 @@ function listNumRead(){
     if [[ "$printFunc" == "" ]];then
         printFunc="echo"
     fi
+    local isSelect=true
     while true;do
-        local formatList=$(echo "$listData" | awk -v search="$search" 'BEGIN{num=0}$1~search{ num++; printf "%-5d%s\n",num,$0 }')
-        eval "$printFunc '$formatList'"
-        local countNum="$(echo "$formatList"|wc -l|grep -Eo '[0-9]+')"
-        read -p "select number:" -r row
+        if $isSelect ;then
+            local formatList=$(echo "$listData" | awk -v search="$search" 'BEGIN{num=0}$1~search{ num++; printf "%-5d%s\n",num,$0 }')
+            eval "$printFunc '$formatList'"
+            local countNum="$(echo "$formatList"|wc -l|grep -Eo '[0-9]+')"
+            local minNum=1
+            if (( $countNum == 0 ));then
+                
+            fi
+            isSelect=false
+        fi
+        read -p "select number[1-$countNum]:" -r row
         if [[ "$row" == "" ]];then
             continue
         fi
         if [[ "$row" == "*" ]];then
             search=""
+            isSelect=true
             continue
         fi
         local num=$(echo "$row"|grep -Eo '[0-9]+')
@@ -69,17 +79,22 @@ function listNumRead(){
                     continue
                 fi
                 if [[ "$argKey" == "$rowKey" ]];then
-                    eval "$argFunc $rowVal"
-                    # local temp=$(eval "$argFunc $rowVal")
-                    # if [[ "$temp" != "" ]];then
-                    #     search="${row}"
-                    # fi
-                    continue
+                    local tempFuncRet
+                    tempFuncRet=$(eval "$argFunc $rowVal") || {
+                        echo "$tempFuncRet"
+                        continue
+                    }
+                    if [[ "$tempFuncRet" != "" ]];then
+                        search="${row}"
+                        isSelect=true
+                    fi
+                    break
                 fi
             done
             continue
         fi
         search="${row}"
+        isSelect=true
         continue
     done
     return 0
