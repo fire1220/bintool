@@ -81,7 +81,7 @@ function listNumRead(){
         local num=$(echo "$row"|grep -Eo '[0-9]+')
         if [[ "${row}" == "$num" ]] ;then
             if (($num < 1)) || (($countNum < $num)) ;then
-                eval "$printFunc 'select range 1-$countNum'"
+                echo "select range 1-$countNum"
                 continue
             fi
             value="$(echo "$formatList" | awk -v num="$num" '$1==num{print $0}')"
