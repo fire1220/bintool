@@ -1,7 +1,10 @@
 #!/bin/bash
 
-function testA(){
-    echo "hello world$2"
+function showColumns(){
+    database="$2"
+    link="mysql -u'$username' -p'$passwd' -h'$hostPath' --database '$database'"
+    eval "${link} -e'show tables'|awk 'NR>1{print \$1}'|xargs -I{} ${link} -e'show create table $database.{}\G'"
+    eval "${link} -e'select table_name,table_comment from information_schema.tables where table_schema = \"$database\"'"
 }
 
 function setFunc(){
@@ -45,12 +48,12 @@ function listNumRead(){
             eval "$printFunc '$formatList'"
             local countNum="$(echo "$formatList"|wc -l|grep -Eo '[0-9]+')"
             local minNum=1
-            if (( $countNum == 0 ));then
-                
-            fi
+            # if (( $countNum == 0 ));then
+            #     
+            # fi
             isSelect=false
         fi
-        read -p "select number[1-$countNum]:" -r row
+        read -p "select number[1-$countNum]:" -r "row"
         if [[ "$row" == "" ]];then
             continue
         fi
@@ -80,6 +83,7 @@ function listNumRead(){
                 fi
                 if [[ "$argKey" == "$rowKey" ]];then
                     local tempFuncRet
+                    rowVal=$(echo "$rowVal"|sed 's/|/\\|/'g)
                     tempFuncRet=$(eval "$argFunc $rowVal") || {
                         echo "$tempFuncRet"
                         continue
@@ -172,21 +176,21 @@ function main(){
         u)
             username="$OPTARG"
             $(getsetenv -p "$envPath" -k "CONST_USERNAME" -v "$username") || {
-                echo "$username"
+                echo "$username set error"
                 exit 1
             }
             ;;
         p)
             passwd="$OPTARG"
             $(getsetenv -p "$envPath" -k "CONST_PASSWD" -v "$passwd") || {
-                echo "$username"
+                echo "$username set error"
                 exit 1
             }
             ;;
         h)
             hostPath="$OPTARG"
             $(getsetenv -p "$envPath" -k "CONST_HOSTPATH" -v "$hostPath") || {
-                echo "$username"
+                echo "$username set error"
                 exit 1
             }
             ;;
@@ -199,14 +203,16 @@ function main(){
         esac
     done
     shift $(($OPTIND-1))
-    executeMysql="mysql -u'$username' -p'$passwd' -h'$hostPath' -e'show schemas' | awk 'NR>1{print $1}'"
-    # echo "$executeMysql"
-    list="$(eval "$executeMysql")"
-    (listNumRead -l "$list" -s "backend|teaching" -f "testA" :get="getFunc" :set="setFunc") || {
-        echo "$t"
+    local search
+    search=$(getsetenv -p "$envPath" -k "CONST_SEARCH") || {
+        echo "$search"
         exit 1
     }
-    echo "$t"
+    executeMysql="mysql -u'$username' -p'$passwd' -h'$hostPath' -e'show schemas' | awk 'NR>1{print $1}'"
+    list="$(eval "$executeMysql")"
+    (listNumRead -l "$list" -s "$search" -f "showColumns" :get="getFunc" :set="setFunc") || {
+        exit 1
+    }
     exit 0
 }
 
