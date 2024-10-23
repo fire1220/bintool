@@ -1,10 +1,14 @@
 #!/bin/bash
 
 function showColumns(){
+    if [[ "$2" == "" ]];then
+        return 0
+    fi
     database="$2"
     link="mysql -u'$username' -p'$passwd' -h'$hostPath' --database '$database'"
     eval "${link} -e'show tables'|awk 'NR>1{print \$1}'|xargs -I{} ${link} -e'show create table $database.{}\G'"
     eval "${link} -e'select table_name,table_comment from information_schema.tables where table_schema = \"$database\"'"
+    return 0
 }
 
 function setFunc(){
