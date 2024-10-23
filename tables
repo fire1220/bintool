@@ -12,10 +12,22 @@ function showColumns(){
 }
 
 function setFunc(){
-    echo "setFunc$1"
+    local search
+    search=$(getsetenv -p "$envPath" -k "CONST_SEARCH" -v "$1") || {
+        echo "$username set error"
+        return 1
+    }
+    echo "$search"
+    return 0
 }
+
 function getFunc(){
-    echo "getFunc$1"
+    local search
+    search=$(getsetenv -p "$envPath" -k "CONST_SEARCH") || {
+        echo "$username set error"
+        return 1
+    }
+    echo "$search"
     return 128
 }
 
@@ -93,7 +105,7 @@ function listNumRead(){
                         continue
                     }
                     if [[ "$tempFuncRet" != "" ]];then
-                        search="${row}"
+                        search="${tempFuncRet}"
                         isSelect=true
                     fi
                     break
@@ -152,6 +164,7 @@ function getsetenv(){
             echo "$newVal" > "$path"
         fi
     fi
+    echo "$val"
     return 0
 }
 
