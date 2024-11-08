@@ -468,7 +468,7 @@ function getNamespaceList(){
             printHead -t "$namespaceListInfo" -n 8 -T 31
             if [[ "$namespaceListInfo" =~ "login" ]] || [[ "$namespaceListInfo" =~ "Unauthorized" ]] ;then
                 printHead -t "Login operation is required：" -n 4
-                printHead -t "rancher login 'your url' --token 'your token'" -n 8 -T33
+                printHead -t "rancher login 'your url' --token 'your Bearer Token'" -n 8 -T33
             fi
             printHead '='
             return 1
