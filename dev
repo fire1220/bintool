@@ -92,9 +92,9 @@ function main(){
             echo ""
             echo -e "Execution Failed"
             echo -e "   Solution:"
-            echo -e "       y:• Push Again    "
-            echo -e "       n:• Exit          "
-            echo -e "       s:• Skip          "
+            echo -e "       • y: Push Again    "
+            echo -e "       • n: Exit          "
+            echo -e "       • s: Skip          "
             str=$(echo -e  "\033[31;1mSelect Execution(y/n or s):\033[0m")
             while read -p "$str" -r row ;do
                 if [[ "$row" == "n" || "$row" == "N" ]];then
