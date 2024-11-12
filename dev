@@ -73,7 +73,7 @@ function main(){
         "git pull"
         "git merge $currentBranchName -m 'Merge branch $currentBranchName into $developmentBranch'"
         "git push"
-        "git --no-pager log -n 1"
+        "git --no-pager log --no-color -n 1"
         "git checkout $currentBranchName"
     );
     local implemented
