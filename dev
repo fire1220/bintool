@@ -59,7 +59,11 @@ function main(){
     dirName=${dirName##*/}
     local currentBranchName
     currentBranchName=$(git_current_branch) || {
-        return 1
+        local tempCode="$?"
+        if [[ "$tempCode" == "21" ]];then
+            echo "not a git repository"
+        fi
+        return $tempCode
     }
     if [[ "$currentBranchName" == "$developmentBranch" ]];then
         echo "current is target development branch"
