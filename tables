@@ -73,7 +73,7 @@ function printFunc(){
     keyWorld=""
     if [[ "$2" != "" ]];then
         worldTemp="$2"
-        worldTemp=sed 's/\\//' "$worldTemp"
+        worldTemp=$(echo "$worldTemp" | sed 's/\\//')
         keyWorld="【 key world: \033[33m$worldTemp\033[0m 】"
     fi
     echo -e "          table list $keyWorld"
