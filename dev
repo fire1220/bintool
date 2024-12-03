@@ -1,6 +1,18 @@
 #!/bin/bash
 
 commandName="${0##*/}"
+
+isNoCheckout=false
+OPTIND=1
+while getopts "n" opt;do
+    case "$opt" in
+        n)
+            isNoCheckout=true
+        ;;
+    esac
+done
+shift $(($OPTIND-1))
+
 if [[ "$1" == "-h" || "$1" == "--help" ]];then
     cat <<!
         command:$commandName
@@ -69,6 +81,7 @@ function main(){
         echo "current is target development branch"
         return 1
     fi
+    local execList
     execList=(
         "git --no-pager diff"
         "git add -A"
@@ -82,6 +95,15 @@ function main(){
         "git --no-pager log --no-color -n 1"
         "git checkout $currentBranchName"
     );
+    if $isNoCheckout ;then
+        execList=(
+            "git --no-pager diff"
+            "git add -A"
+            "git commit -m '$commitInfo'"
+            "git pull"
+            "git push"
+        );
+    fi
     local implemented
     for commandStr in "${execList[@]}" ;do
         if [[ "$implemented" == "$commandStr" ]];then
