@@ -2,26 +2,50 @@
 
 commandName="${0##*/}"
 
+function helpInfo(){
+    cat <<!
+        command:$commandName
+            $commandName [-n] "commitInfo"
+        参数：
+            -n          只提交到当前分支，不进行切换分支
+            commitInfo  提交的git commit 信息
+
+        说明：
+            会把git的"当前分支"合并到"${commandName}"开发分支
+            如果想变更要合并的开发分支，修改脚本名称即可
+        
+        example:
+            $commandName "提交并且合并到${commandName}分支"
+            $commandName -n "只提交到当前分支"
+
+!
+    exit 0
+}
+
 isNoCheckout=false
 OPTIND=1
-while getopts "n" opt;do
+while getopts "nh-:" opt;do
     case "$opt" in
         n)
             isNoCheckout=true
         ;;
+        h)
+            helpInfo
+        ;;
+        -)
+            argKeyLong=${OPTARG%%=*}
+            if [[ "$argKeyLong" == "$OPTARG" ]];then
+                case "$argKeyLong" in
+                    "help")
+                        helpInfo           
+                    ;;
+                esac
+                continue
+            fi
+        ;;
     esac
 done
 shift $(($OPTIND-1))
-
-if [[ "$1" == "-h" || "$1" == "--help" ]];then
-    cat <<!
-        command:$commandName
-        说明：
-            会把git的"当前分支"合并到"${commandName}"开发分支
-            如果想变更要合并的开发分支，修改脚本名称即可
-!
-    exit 0
-fi
 
 readonly developmentBranch="$commandName"
 
