@@ -4,6 +4,10 @@
 # author ZhouJiandong
 # date 2024-08-03
 # update 2024-09-02 11:45:09
+# rancher exec list
+#   rancher kubectl get namespaces
+#   rancher kubectl get pods -n "$namespaceName"
+#   rancher kubectl exec -n "$namespaceName" -it "${podName}" -- /bin/bash
 
 # configuration
 # isUseRlwrap : Try to use enhanced interaction.
