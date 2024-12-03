@@ -303,7 +303,6 @@ function main(){
                         helpInfo
                         ;;
                 esac
-                
             fi
             ;;
         esac
