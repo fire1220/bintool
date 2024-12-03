@@ -138,7 +138,6 @@ function listNumRead(){
         fi
         local rowKey="${row%% *}"
         local rowVal="${row#* }"
-        # if [[ "$row" != "$rowKey" ]] && [[ "$rowKey" != "" ]] && [[ "$rowVal" != "" ]] ;then
         if [[ "$row" != "$rowKey" ]] && [[ "$rowKey" != "" ]] ;then
             for v in "$@";do
                 local argKey="${v%%=*}"
