@@ -37,7 +37,7 @@ while getopts "nh-:" opt;do
             if [[ "$argKeyLong" == "$OPTARG" ]];then
                 case "$argKeyLong" in
                     "help")
-                        helpInfo           
+                        helpInfo
                     ;;
                 esac
                 continue
