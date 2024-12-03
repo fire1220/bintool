@@ -71,9 +71,10 @@ function getFunc(){
 
 function printFunc(){
     keyWorld=""
-    # table list 【 key world: $2 】
     if [[ "$2" != "" ]];then
-        keyWorld="【 key world: \033[33m$2\033[0m 】"
+        worldTemp="$2"
+        worldTemp=sed 's/\\//' "$worldTemp"
+        keyWorld="【 key world: \033[33m$worldTemp\033[0m 】"
     fi
     echo -e "          table list $keyWorld"
     echo "--------------------------------------------------"
@@ -266,21 +267,18 @@ function main(){
             }
             ;;
         p)
-            # passwd="$OPTARG"
             passwd=$(getsetenv -p "$envPath" -k "CONST_PASSWD" -v "$OPTARG") || {
                 echo "$passwd set error"
                 exit 1
             }
             ;;
         P)
-            # port="$OPTARG"
-            port=$(getsetenv -p "$envPath" -k "CONST_PASSWD" -v "$OPTARG") || {
+            port=$(getsetenv -p "$envPath" -k "CONST_PORT" -v "$OPTARG") || {
                 echo "$port set error"
                 exit 1
             }
             ;;
         h)
-            # hostPath="$OPTARG"
             hostPath=$(getsetenv -p "$envPath" -k "CONST_HOSTPATH" -v "$OPTARG") || {
                 echo "$hostPath set error"
                 exit 1
