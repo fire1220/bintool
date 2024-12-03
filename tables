@@ -1,5 +1,42 @@
 #!/bin/bash
 
+readonly commandName="${0##*/}"
+
+function helpInfo(){
+    cat <<!
+    command:$commandName
+
+    参数：（首次执行需要执行链接参数，之后执行会自动记住该链接参数）
+        -u      MySQL用户名
+        -p      MySQL密码
+        -h      MySQL主机地址
+        -P      MySQL端口号(默认3366)
+
+    说明：
+        打印某个库的全部表信息
+
+    example:
+        $commandName -u'username' -p'passwd' -h'127.0.0.1'
+
+!
+    exit 0
+}
+
+function helpEnter(){
+cat <<!
+    常用指令：
+        *           查询所有，或输入关键词搜索
+        :set val    设置当前搜索的关键词
+                    :set "" 或 :set '' 表示清空设置
+
+    其他说明：
+        1.输入关键词或者*搜索
+
+  ================================================
+
+!
+}
+
 function showColumns(){
     if [[ "$2" == "" ]];then
         return 0
@@ -13,7 +50,8 @@ function showColumns(){
 
 function setFunc(){
     local search
-    search=$(getsetenv -p "$envPath" -k "CONST_SEARCH" -v "$1") || {
+    local val="$1"
+    search=$(getsetenv -p "$envPath" -k "CONST_SEARCH" -v "$val") || {
         echo "$username set error"
         return 1
     }
@@ -29,6 +67,17 @@ function getFunc(){
     }
     echo "$search"
     return 128
+}
+
+function printFunc(){
+    keyWorld=""
+    # table list 【 key world: $2 】
+    if [[ "$2" != "" ]];then
+        keyWorld="【 key world: \033[33m$2\033[0m 】"
+    fi
+    echo -e "          table list $keyWorld"
+    echo "--------------------------------------------------"
+    echo "$1"
 }
 
 function listNumRead(){
@@ -60,14 +109,13 @@ function listNumRead(){
     local isSelect=true
     while true;do
         if $isSelect ;then
+            if [[ "$search" == "*" ]];then
+                search=""
+            fi
             local formatList=$(echo "$listData" | awk -v search="$search" 'BEGIN{num=0}$1~search{ num++; printf "%-5d%s\n",num,$0 }')
-            eval "$printFunc '$formatList'"
+            eval "$printFunc '$formatList' '$search'"
             local countNum="$(echo "$formatList"|wc -l|grep -Eo '[0-9]+')"
             local minNum=1
-            # if (( $countNum == 0 ));then
-            #     
-            # fi
-            isSelect=false
         fi
         read -p "select number[1-$countNum]:" -r "row"
         if [[ "$row" == "" ]];then
@@ -90,7 +138,8 @@ function listNumRead(){
         fi
         local rowKey="${row%% *}"
         local rowVal="${row#* }"
-        if [[ "$row" != "$rowKey" ]] && [[ "$rowKey" != "" ]] && [[ "$rowVal" != "" ]] ;then
+        # if [[ "$row" != "$rowKey" ]] && [[ "$rowKey" != "" ]] && [[ "$rowVal" != "" ]] ;then
+        if [[ "$row" != "$rowKey" ]] && [[ "$rowKey" != "" ]] ;then
             for v in "$@";do
                 local argKey="${v%%=*}"
                 local argFunc="${v#*=}"
@@ -99,15 +148,17 @@ function listNumRead(){
                 fi
                 if [[ "$argKey" == "$rowKey" ]];then
                     local tempFuncRet
+                    rowVal=${rowVal#\"}
+                    rowVal=${rowVal%\"}
+                    rowVal=${rowVal#\'}
+                    rowVal=${rowVal%\'}
                     rowVal=$(echo "$rowVal"|sed 's/|/\\|/'g)
-                    tempFuncRet=$(eval "$argFunc $rowVal") || {
+                    tempFuncRet=$(eval "$argFunc '$rowVal'") || {
                         echo "$tempFuncRet"
                         continue
                     }
-                    if [[ "$tempFuncRet" != "" ]];then
-                        search="${tempFuncRet}"
-                        isSelect=true
-                    fi
+                    search="${tempFuncRet}"
+                    isSelect=true
                     break
                 fi
             done
@@ -124,6 +175,7 @@ function getsetenv(){
     local path=""
     local key=""
     local val=""
+    local isSet=false
     OPTIND=1
     while getopts "p:k:v:" opt;do
         case "$opt" in
@@ -132,6 +184,7 @@ function getsetenv(){
         k)
             key="$OPTARG";;
         v)
+            isSet=true
             val="$OPTARG";;
         esac
     done
@@ -144,7 +197,8 @@ function getsetenv(){
         echo "没有获取到key" >&2
         return 2
     fi
-    if [[ "$val" == "" ]] ;then
+
+    if ! $isSet ;then
         if [ -f "$path" ] ;then
             . "$path"
             eval "echo \$$key"
@@ -152,6 +206,21 @@ function getsetenv(){
             echo ""
         fi
         return 0
+    fi
+
+    if [ ! -f "$path" ];then
+        touch "$path"
+    fi
+
+    if $isSet ;then
+        if [[ "$val" == '""' ]] || [[ "$val" == "" ]] ;then
+            newVal=$(eval "sed 's/^${key}=\".*\"$//' '$path'")
+            if [[ "$newVal" != "$context" ]];then
+                echo "$newVal" > "$path"
+            fi
+            echo ""
+            return 0
+        fi
     fi
     
     existsName=$(eval "grep -E '^${key}=\".*\"$' '$path'")
@@ -171,6 +240,7 @@ function getsetenv(){
 function main(){
     local username=""
     local passwd=""
+    local port="3366"
     local hostPath=""
     local execute=""
     local database=""
@@ -188,26 +258,32 @@ function main(){
         exit 1
     }
     OPTIND=1
-    while getopts "u:p:h:d:e:" opt;do
+    while getopts "u:p:P:h:d:e:-:" opt;do
         case $opt in
         u)
-            username="$OPTARG"
-            $(getsetenv -p "$envPath" -k "CONST_USERNAME" -v "$username") || {
+            username=$(getsetenv -p "$envPath" -k "CONST_USERNAME" -v "$OPTARG") || {
                 echo "$username set error"
                 exit 1
             }
             ;;
         p)
-            passwd="$OPTARG"
-            $(getsetenv -p "$envPath" -k "CONST_PASSWD" -v "$passwd") || {
-                echo "$username set error"
+            # passwd="$OPTARG"
+            passwd=$(getsetenv -p "$envPath" -k "CONST_PASSWD" -v "$OPTARG") || {
+                echo "$passwd set error"
+                exit 1
+            }
+            ;;
+        P)
+            # port="$OPTARG"
+            port=$(getsetenv -p "$envPath" -k "CONST_PASSWD" -v "$OPTARG") || {
+                echo "$port set error"
                 exit 1
             }
             ;;
         h)
-            hostPath="$OPTARG"
-            $(getsetenv -p "$envPath" -k "CONST_HOSTPATH" -v "$hostPath") || {
-                echo "$username set error"
+            # hostPath="$OPTARG"
+            hostPath=$(getsetenv -p "$envPath" -k "CONST_HOSTPATH" -v "$OPTARG") || {
+                echo "$hostPath set error"
                 exit 1
             }
             ;;
@@ -217,6 +293,19 @@ function main(){
         e)
             execute="$OPTARG"
             ;;
+        -)
+            argKeyLong="${OPTARG%%=*}"
+            argValLong="${OPTARG#*=}"
+            if [[ "$argKeyLong" == "$OPTARG" ]];then
+                # bool value
+                case "$argKeyLong" in
+                    "help")
+                        helpInfo
+                        ;;
+                esac
+                
+            fi
+            ;;
         esac
     done
     shift $(($OPTIND-1))
@@ -225,9 +314,14 @@ function main(){
         echo "$search"
         exit 1
     }
+    if [[ "$username" == "" ]] || [[ "$passwd" == "" ]] || [[ "$hostPath" == "" ]];then
+        echo "MySQL的账户、密码、主机名称不能为空"
+        exit 1
+    fi
     executeMysql="mysql -u'$username' -p'$passwd' -h'$hostPath' -e'show schemas' | awk 'NR>1{print $1}'"
     list="$(eval "$executeMysql")"
-    (listNumRead -l "$list" -s "$search" -f "showColumns" :get="getFunc" :set="setFunc") || {
+    helpEnter
+    (listNumRead -l "$list" -s "$search" -f "showColumns" -p "printFunc" :get="getFunc" :set="setFunc") || {
         exit 1
     }
     exit 0
