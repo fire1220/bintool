@@ -6,6 +6,7 @@ function helpInfo(){
     cat <<!
         command:$commandName
             $commandName [-n] "commitInfo"
+
         参数：
             -n          只提交到当前分支，不进行切换分支
             commitInfo  提交的git commit 信息
