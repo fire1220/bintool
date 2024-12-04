@@ -64,12 +64,16 @@ function main(){
         echo "缺少文件参数" >&2
     fi
 
+    dataList="$(cat "$file")"
+    dataLen=$(echo "$dataList"|wc -l)
     i=0
-    for val in $(cat "$file");do
+    for val in $dataList;do
         ((i++))
         echo -n "${val}"
         local temp=$(($i % $size))
         if ((0 == $temp));then
+            echo ""
+        elif (($i >= $dataLen));then
             echo ""
         else
             echo -n "${delimiter}"
