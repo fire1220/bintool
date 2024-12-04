@@ -1,0 +1,81 @@
+#!/bin/bash
+
+commandName="${0##*/}"
+function helpInfo(){
+    cat <<!
+        command:
+            $commandName -s size -f file [-d delimiter]
+
+        说明：
+            多行合并成少行
+
+        参数：
+            -s      多少行合并成一行
+            -f      要操作的文件
+            -d      合并后的每行分隔符
+
+        example:
+            $commandName -s 10 -d',' -f x.txt
+!
+}
+
+function main(){
+    local file=""
+    local size=""
+    local delimiter=""
+    OPTIND=1
+    while getopts ":s:f:d:h" opt;do
+        case "$opt" in
+            d)
+                delimiter="$OPTARG"
+                ;;
+            f)
+                file="$OPTARG"
+                ;;
+            s)
+                size="$OPTARG"
+                ;;
+            h)
+                helpInfo
+                exit 0
+                ;;
+            :)
+                echo "参数不认识" >&2
+                exit 1
+                ;;
+            \?)
+                echo "参数缺少值" >&2
+                exit 1
+                ;;
+            *)
+                exit 1
+                ;;
+        esac
+    done
+    shift $(($OPTIND-1))
+
+    if [[ "$size" == "" ]];then
+        echo "缺少尺寸参数" >&2
+    fi
+    if [[ "$file" == "" ]];then
+        file="$1"
+    fi
+    if [[ "$file" == "" ]];then
+        echo "缺少文件参数" >&2
+    fi
+
+    i=0
+    for val in $(cat "$file");do
+        ((i++))
+        echo -n "${val}"
+        local temp=$(($i % $size))
+        if ((0 == $temp));then
+            echo ""
+        else
+            echo -n "${delimiter}"
+        fi
+    done
+}
+
+main $@
+
