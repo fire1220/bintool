@@ -264,8 +264,8 @@ function main(){
         exit 1
     }
     OPTIND=1
-    while getopts "u:p:P:h:d:e:-:" opt;do
-        case $opt in
+    while getopts ":u:p:P:h:d:e:-:" opt;do
+        case "$opt" in
         u)
             username=$(getsetenv -p "$envPath" -k "CONST_USERNAME" -v "$OPTARG") || {
                 echo "$username set error"
@@ -307,6 +307,19 @@ function main(){
                         ;;
                 esac
             fi
+            ;;
+        :)
+            echo "Error: Option -$OPTARG requires an argument." >&2
+            exit 1
+            ;;
+        \?)
+            echo "Error: Invalid option -$OPTARG detected." >&2
+            exit 1
+            ;;
+        *)
+            # 默认情况下，不应该到达这里，除非 getopts 有错误
+            echo "Error: Unhandled option -$OPTARG." >&2
+            exit 1
             ;;
         esac
     done
