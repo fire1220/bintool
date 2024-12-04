@@ -69,6 +69,15 @@ function getFunc(){
     return 128
 }
 
+function trimQuote(){
+    str="$1"
+    str=${str#\"}
+    str=${str%\"}
+    str=${str#\'}
+    str=${str%\'}
+    echo "$str"
+}
+
 function printFunc(){
     keyWorld=""
     if [[ "$2" != "" ]];then
@@ -148,10 +157,7 @@ function listNumRead(){
                 fi
                 if [[ "$argKey" == "$rowKey" ]];then
                     local tempFuncRet
-                    rowVal=${rowVal#\"}
-                    rowVal=${rowVal%\"}
-                    rowVal=${rowVal#\'}
-                    rowVal=${rowVal%\'}
+                    rowVal=$(trimQuote "$rowVal")
                     rowVal=$(echo "$rowVal"|sed 's/|/\\|/'g)
                     tempFuncRet=$(eval "$argFunc '$rowVal'") || {
                         echo "$tempFuncRet"
