@@ -40,11 +40,11 @@ function main(){
                 exit 0
                 ;;
             :)
-                echo "参数不认识" >&2
+                echo "参数 -${OPTARG} 缺少值" >&2
                 exit 1
                 ;;
             \?)
-                echo "参数缺少值" >&2
+                echo "参数 -${OPTARG} 不认识" >&2
                 exit 1
                 ;;
             *)
