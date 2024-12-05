@@ -86,7 +86,7 @@ function main(){
     local delimiter=","
     local isStandardIn=false
     OPTIND=1
-    while getopts ":s:f:d:hS" opt;do
+    while getopts ":s:f:d:-:hS" opt;do
         case "$opt" in
             d)
                 delimiter="$OPTARG"
@@ -107,6 +107,14 @@ function main(){
                 ;;
             S)
                 isStandardIn=true
+                ;;
+            -)
+                case "${OPTARG}" in
+                    help)
+                        helpInfo
+                        exit 0
+                        ;;
+                esac
                 ;;
             :)
                 echo "参数 -${OPTARG} 缺少值" >&2
