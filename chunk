@@ -4,7 +4,7 @@ commandName="${0##*/}"
 function helpInfo(){
     cat <<!
         command:
-            $commandName -s size -f file [-d delimiter]
+            $commandName -s size -f file [-d delimiter] [file]
 
         说明：
             多行合并成少行
@@ -12,7 +12,7 @@ function helpInfo(){
         参数：
             -s      多少行合并成一行
             -f      要操作的文件
-            -d      合并后的每行分隔符
+            -d      合并后的每行分隔符(默认,)
 
         example:
             $commandName -s 10 -d',' -f x.txt
@@ -22,7 +22,7 @@ function helpInfo(){
 function main(){
     local file=""
     local size=""
-    local delimiter=""
+    local delimiter=","
     OPTIND=1
     while getopts ":s:f:d:h" opt;do
         case "$opt" in
