@@ -13,18 +13,80 @@ function helpInfo(){
             -s      多少行合并成一行
             -f      要操作的文件
             -d      合并后的每行分隔符(默认,)
+            -S      从标准输入或者管道获取数据
 
         example:
             $commandName -s 10 -d',' -f x.txt
 !
 }
 
+function standardSource(){
+    local size="$1"
+    local delimiter="$2"
+    local i=0
+    local isNotRowFirst=false
+    while read -r row;do
+        if [[ "$row" == "" ]];then
+            continue
+        fi
+        ((i++))
+        if $isNotRowFirst ;then
+            echo -n "${delimiter}"
+        fi
+        echo -n "${row}"
+        local temp=$(($i % $size))
+        if ((0 == $temp));then
+            isNotRowFirst=false
+            echo ""
+        else
+            isNotRowFirst=true
+        fi
+    done
+    echo ""
+    return 0
+}
+
+function fileSource(){
+    local size="$1"
+    local delimiter="$2"
+    local file="$3"
+    if [[ "$file" == "" ]];then
+        file="$1"
+    fi
+    if [[ "$file" == "" ]];then
+        echo "缺少文件参数" >&2
+    fi
+
+    local i=0
+    local isNotRowFirst=false
+    for row in $(cat "$file");do
+        if [[ "$row" == "" ]];then
+            continue
+        fi
+        ((i++))
+        if $isNotRowFirst ;then
+            echo -n "${delimiter}"
+        fi
+        echo -n "${row}"
+        local temp=$(($i % $size))
+        if ((0 == $temp));then
+            isNotRowFirst=false
+            echo ""
+        else
+            isNotRowFirst=true
+        fi
+    done
+    echo ""
+    return 0
+}
+
 function main(){
     local file=""
     local size=""
     local delimiter=","
+    local isStandardIn=false
     OPTIND=1
-    while getopts ":s:f:d:h" opt;do
+    while getopts ":s:f:d:hS" opt;do
         case "$opt" in
             d)
                 delimiter="$OPTARG"
@@ -34,10 +96,17 @@ function main(){
                 ;;
             s)
                 size="$OPTARG"
+                if ! [[ "$size" =~ ^[0-9]+$ ]];then
+                    echo "参数 -s 的值必须是数字"
+                    exit 1
+                fi
                 ;;
             h)
                 helpInfo
                 exit 0
+                ;;
+            S)
+                isStandardIn=true
                 ;;
             :)
                 echo "参数 -${OPTARG} 缺少值" >&2
@@ -55,30 +124,22 @@ function main(){
     shift $(($OPTIND-1))
 
     if [[ "$size" == "" ]];then
-        echo "缺少尺寸参数" >&2
-    fi
-    if [[ "$file" == "" ]];then
-        file="$1"
-    fi
-    if [[ "$file" == "" ]];then
-        echo "缺少文件参数" >&2
+        echo "$commandName 缺少尺寸参数-s" >&2
+        exit 1
     fi
 
-    dataList="$(cat "$file")"
-    dataLen=$(echo "$dataList"|wc -l)
-    i=0
-    for val in $dataList;do
-        ((i++))
-        echo -n "${val}"
-        local temp=$(($i % $size))
-        if ((0 == $temp));then
-            echo ""
-        elif (($i >= $dataLen));then
-            echo ""
-        else
-            echo -n "${delimiter}"
+    if $isStandardIn ;then
+        standardSource "$size" "$delimiter"
+    else
+        if [[ "$file" == "" ]];then
+            file="$1"
         fi
-    done
+        if [[ "$file" == "" ]];then
+            echo "$commandName 缺少文件参数-f或标准输入" >&2
+            exit 1
+        fi
+        fileSource "$size" "$delimiter" "$file"
+    fi
 }
 
 main $@
