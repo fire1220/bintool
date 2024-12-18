@@ -37,7 +37,7 @@ configInit=$(cat <<!
 !
 )
 
-configPath="$HOME/config/jenkins/.jenkinsrc"
+configPath="$HOME/.config/jenkins/.jenkinsrc"
 
 declare -r dirName="$(basename "$(pwd)")"
 
@@ -46,7 +46,7 @@ function helpInit(){
         command [-c] commitId
 
         第一次执行会自动生产一个配置文件:
-            1.配置文件路径：$configPath
+            1.配置文件路径："$configPath"
             2.编辑该配置文件后就可以使用了
 
         参数：
@@ -79,7 +79,7 @@ function main(){
 
     . "$configPath"
     if [[ "$username" == "" ]] || [[ "$appToken" == "" ]] || [[ "$url" == ""  ]] || [[ "$podNameList" == "" ]] || [[ "$paramList" == "" ]];then
-        echo "请先编辑配置文件：$HOME/config/jenkins/.jenkinsrc"
+        echo "请先编辑配置文件：$configPath"
         exit 0
     fi
 
