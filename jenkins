@@ -1,24 +1,5 @@
 #!/bin/bash
 
-# curl -X POST -u zhoujiandong:116c9c2abe00a4ffe91dc9f5c3b58e1c1e https://test-jenkins.weimiaocaishang.com/job/k8s-test-php-wm-light-backend-new/buildWithParameters --form 'wm_light_backend_version="0f3e47a4b455c861e40875b709f306575eae1d58"'
-
-# declare -r username=zhoujiandong
-# declare -r appToken=116c9c2abe00a4ffe91dc9f5c3b58e1c1e
-# declare -r url=https://test-jenkins.weimiaocaishang.com
-# declare -ar podNameList=(
-#     wm-light-backend=k8s-test-php-wm-light-backend-new
-#     # wm-light-backend=k8s-test-php-wm-light-backend-supervisor-crontab
-#     wm-light-frontend=k8s-test-php-wm-light-frontend-new
-#     # wm-light-frontend=k8s-test-php-wm-light-frontend-supervisor-crontab
-#     wm-light-practice=k8s-test-go-wm-light-practice
-# )
-# declare -ar paramList=(
-#     wm-light-backend=wm_light_backend_version
-#     wm-light-backend=title
-#     wm-light-frontend=wm_light_frontend_version
-#     wm-light-practice=wm_light_practice_version
-# )
-
 configInit=$(cat <<!
 # username=xxxx
 # appToken=xxxx
