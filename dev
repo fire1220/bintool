@@ -5,11 +5,12 @@ commandName="${0##*/}"
 function helpInfo(){
     cat <<!
         command:$commandName
-            $commandName [-n] "commitInfo"
+            $commandName [-nj] [--jenkins] "commitInfo"
 
         参数：
-            -n          只提交到当前分支，不进行切换分支
-            commitInfo  提交的git commit 信息
+            -n              只提交到当前分支，不进行切换分支
+            -j / --jenkins  调用jenkins命令把commit_id作为参数
+            commitInfo      提交的git commit 信息
 
         说明：
             会把git的"当前分支"合并到"${commandName}"开发分支
@@ -23,6 +24,7 @@ function helpInfo(){
     exit 0
 }
 
+isPostJenkins=false
 isNoCheckout=false
 OPTIND=1
 while getopts "nh-:" opt;do
@@ -33,12 +35,18 @@ while getopts "nh-:" opt;do
         h)
             helpInfo
         ;;
+        j)
+            isPostJenkins=true
+            ;;
         -)
             argKeyLong=${OPTARG%%=*}
             if [[ "$argKeyLong" == "$OPTARG" ]];then
                 case "$argKeyLong" in
                     "help")
                         helpInfo
+                    ;;
+                    "jenkins")
+                        isPostJenkins=true
                     ;;
                 esac
                 continue
@@ -130,6 +138,7 @@ function main(){
         );
     fi
     local implemented
+    local commitId=""
     for commandStr in "${execList[@]}" ;do
         if [[ "$implemented" == "$commandStr" ]];then
             continue
@@ -141,6 +150,11 @@ function main(){
         }
         commandPrefix="\033[32m[$dateTime] \033[36m$dirName\033[32m (\033[31;1m$currentBranchNameTemp\033[0;32m)\033[1m ➜ \033[0m"
         echo  -e "${commandPrefix}\033[33m${commandStr}\033[0m"
+
+        if [[ "$commandStr" =~ "log" ]];then
+            commitId=$(eval "$commandStr" | head -n1 | awk '{print $2}')
+        fi
+
         eval "$commandStr" || {
             echo ""
             echo -e "Execution Failed"
@@ -176,6 +190,10 @@ function main(){
             done
         }
     done
+    if $isPostJenkins && [[ "$commitId" != "" ]];then
+        evalStr="jenkins \"$commitId\""
+        eval "$evalStr"
+    fi
 }
 
 main
