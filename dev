@@ -192,6 +192,9 @@ function main(){
     done
     if $isPostJenkins ;then
         if [[ "$commitId" != "" ]];then
+            currentBranchNameTemp=$(git_current_branch) || {
+                return 1
+            }
             commandPrefix="\033[32m[$dateTime] \033[36m$dirName\033[32m (\033[31;1m$currentBranchNameTemp\033[0;32m)\033[1m ➜ \033[0m"
             evalStr="jenkins \"$commitId\""
             echo  -e "${commandPrefix}\033[33m${evalStr}\033[0m"
