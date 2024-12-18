@@ -27,7 +27,7 @@ function helpInfo(){
 isPostJenkins=false
 isNoCheckout=false
 OPTIND=1
-while getopts "nh-:" opt;do
+while getopts "nh-:j" opt;do
     case "$opt" in
         n)
             isNoCheckout=true
