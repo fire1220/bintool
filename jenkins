@@ -22,6 +22,8 @@ configPath="$HOME/.config/jenkins/.jenkinsrc"
 
 declare -r dirName="$(basename "$(pwd)")"
 
+timeTemp="$(date +'%s')"
+
 function helpInit(){
     cat <<!
         command [-c] commitId
@@ -86,7 +88,7 @@ function main(){
     done
 
     local podList=()
-    local podListIndex=()
+    local podListIndex=0
     local execStr=""
     for v in "${podNameList[@]}";do
         local name="${v%%=*}"
@@ -105,65 +107,162 @@ function main(){
         exit 0
     fi
 
-    progressPod "$podList"
-
+    progressPod "${podList[@]}"
     exit 0
 }
 
-function progressPod() {
-    local podList="$1"
+function progressPodListFun(){
     if [[ "$podList" == "" ]];then
         return 0
     fi
     local progressPodList=()
     local progressIndex=0
-    for v in "$podList";do
-        execStr="curl -s -X POST -u ${username}:${appToken} '${url}/job/${v}/lastBuild/api/json?pretty=true' | jq '.number'"
-        echo "$execStr"
+    for v in "${podList[@]}";do
+        local execStr="curl -s -X POST -u ${username}:${appToken} '${url}/job/${v}/lastBuild/api/json?pretty=true' | jq '.number'"
         local buildNumber="$(eval "$execStr")"
         progressPodList[$progressIndex]="${v}/${buildNumber}"
         progressIndex=$(($progressIndex+1))
     done
-    if [[ "$progressPodList" != "" ]];then
-        local isExit=true
-        for v in {1..500};do
-            local strTemp=""
-            for v2 in "$progressPodList";do
-                execStr="curl -s -X POST -u ${username}:${appToken} '${url}/job/${v2}/api/json?pretty=true'"
-                temp="$(eval "$execStr")"
-                local building="$(echo "$temp" | jq '.building')"
-                local duration="$(echo "$temp" | jq '.duration')"
-                local estimatedDuration="$(echo "$temp" | jq '.estimatedDuration')"
-                local result="$(echo "$temp" | jq -r '.result')"
+    echo ${progressPodList[@]}
+}
 
-                local proportionNum="$((100*$duration/$estimatedDuration))"
-                if (($proportionNum > 100)) ;then
-                    proportionNum=99
-                fi
-                if [[ "$result" == "SUCCESS" ]];then
-                    proportionNum=100
-                fi
-                resultTemp="$result"
-                if [[ "$resultTemp" == "null" ]];then
-                    resultTemp="ing..."
-                fi
-                strTemp="${strTemp} [${v2}]:【${proportionNum}%%】【${resultTemp}】"
-                if [[ "$result" == "null" ]];then
-                    isExit=false
-                fi
-            done
-            printf "\r${strTemp}"
-            if $isExit ;then
-                break
-            fi
-            sleep 2
-        done
-        echo ""
+# ret code: 
+#    11 continue
+#    12 exit
+#    13 error
+function progressFmt(){
+    local temp="$1"
+    local building
+    local estimatedDuration
+    local timestamp
+    local result
+    local isJqError=true
+    building="$(echo "$temp" | jq '.building')" && {
+        isJqError=false
+    }
+    estimatedDuration="$(echo "$temp" | jq '.estimatedDuration')" && {
+        isJqError=false
+    }
+    timestamp="$(echo "$temp" | jq -r '.timestamp')" && {
+        isJqError=false
+    }
+    result="$(echo "$temp" | jq -r '.result')" && {
+        isJqError=false
+    }
+    if $isJqError ;then
+        echo >&2 "$temp"
+        echo >&2 "数据解析失败,不是一个有效的json"
+        return 13
     fi
+    if [[ "$timestamp" == "" ]];then
+        printf "\r没有获取到时间%s        " "${point}."
+        return 11
+    fi
+    if (( $timestamp > 9000000000 ));then
+        timestamp=$(($timestamp/1000))
+    fi
+    if (($timestamp < $timeTemp));then
+        local point=""
+        for ((i=0;i<($v%6);i++)) ;do
+            point="${point}."
+        done
+        printf "\r正在获取中%s        " "${point}."
+        return 11
+    fi
+    local now="$(date +'%s')"
+    local durationTime=$(($now-$timeTemp))
+    local proportionNum="$((100000*$durationTime/$estimatedDuration))"
+    if (($proportionNum > 100)) ;then
+        proportionNum=99
+    fi
+    if [[ "$result" == "SUCCESS" ]];then
+        proportionNum=100
+    fi
+    resultTemp="$result"
+    if [[ "$resultTemp" == "null" ]];then
+        resultTemp="ing..."
+    fi
+    local strTempCurrent="[${v2}]:【${durationTime}s】【${proportionNum}％】【${resultTemp}】"
+    printf "${strTempCurrent}"
+    if [[ "$result" == "null" ]];then
+        return 0
+    fi
+    return 12
+}
+
+function progressPod() {
+    sleep 2
+    declare -a progressPodList=($(progressPodListFun $@))
+    if [[ "$progressPodList" == "" ]];then
+        return 0
+    fi
+    local isExit=false
+    local endStr=""
+    local v2Index=0
+    declare -a progressRet=()
+    for v in {1..500};do
+        local strTemp=""
+        local isContinue=false
+        local tempNum="${#progressPodList[@]}"
+        v2Index=0
+        for v2 in ${progressPodList[@]};do
+            isContinue=false
+            local strTempCurrent="${progressRet[$v2Index]}"
+            if [[ "$strTempCurrent" == "" ]];then
+                local execStr="curl -s -X POST -u ${username}:${appToken} '${url}/job/${v2}/api/json?pretty=true'"
+                local temp="$(eval "$execStr")"
+                strTempCurrent=$(progressFmt "$temp")
+                statusProgressFmt="$?"
+            fi
+            case "$statusProgressFmt" in
+                11)
+                    isContinue=true
+                    printf "\r${strTempCurrent}"
+                    break
+                    ;;
+                12)
+                    progressRet[$v2Index]="$strTempCurrent"
+                    tempNum=$(($tempNum-1))
+                    if (($tempNum<=0));then
+                        isExit=true
+                    fi
+                    ;;
+                13)
+                    exit 3
+                    ;;
+                *)
+                    ;;
+            esac
+            if (($v2Index>0));then
+                endStr="${endStr} \033[1B"
+            fi
+            v2Index=$(($v2Index+1))
+            if [[ "$strTemp" == "" ]];then
+                strTemp="${strTempCurrent}"
+            else
+                strTemp="${strTemp}\n${strTempCurrent}\033[1A"
+            fi
+        done
+        printf "\r${strTemp}"
+        if $isExit ;then
+            break
+        fi
+        if $isContinue ;then
+            sleep 2
+            progressPodList=$(progressPodListFun "$1")
+            if [[ "$progressPodList" == "" ]];then
+                return 0
+            fi
+            continue
+        fi
+        sleep 2
+    done
+    printf "${endStr}\n"
     return 0
 }
 
-    # podList=("k8s-test-php-wm-light-backend-new")
-    # progressPod "$podList"
+    # podList=("k8s-test-php-wm-light-frontend-new" "k8s-test-php-wm-light-frontend-supervisor-crontab")
+    # progressPod "${podList[@]}"
+    # exit 1
 
 main $@
