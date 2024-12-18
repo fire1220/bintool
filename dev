@@ -190,9 +190,13 @@ function main(){
             done
         }
     done
-    if $isPostJenkins && [[ "$commitId" != "" ]];then
-        evalStr="jenkins \"$commitId\""
-        eval "$evalStr"
+    if $isPostJenkins ;then
+        echo "post jenkins begin"
+        if [[ "$commitId" != "" ]];then
+            evalStr="jenkins \"$commitId\""
+            eval "$evalStr"
+        fi
+        echo "post jenkins complete"
     fi
 }
 
