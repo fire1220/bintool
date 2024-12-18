@@ -37,6 +37,16 @@ function helpInit(){
     exit 0
 }
 
+
+if [ ! -f "$configPath" ];then
+    if [ ! -d "$(dirname "$configPath")" ];then
+        mkdir -p "$(dirname "$configPath")"
+    fi
+    echo "$configInit" > "$configPath"
+fi
+
+. "$configPath"
+
 function main(){
     local commitId=""
     OPTIND=1
@@ -51,14 +61,6 @@ function main(){
     done
     shift $(($OPTIND-1))
 
-    if [ ! -f "$configPath" ];then
-        if [ ! -d "$(dirname "$configPath")" ];then
-            mkdir -p "$(dirname "$configPath")"
-        fi
-        echo "$configInit" > "$configPath"
-    fi
-
-    . "$configPath"
     if [[ "$username" == "" ]] || [[ "$appToken" == "" ]] || [[ "$url" == ""  ]] || [[ "$podNameList" == "" ]] || [[ "$paramList" == "" ]];then
         echo "请先编辑配置文件：$configPath"
         exit 0
@@ -83,6 +85,8 @@ function main(){
         params="${params} --form '${paramKey}=\"${commitId}\"'"
     done
 
+    local podList=()
+    local podListIndex=()
     local execStr=""
     for v in "${podNameList[@]}";do
         local name="${v%%=*}"
@@ -93,10 +97,73 @@ function main(){
         execStr="curl -X POST -u ${username}:${appToken} ${url}/job/${podName}/buildWithParameters ${params}"
         echo "$execStr"
         eval "$execStr"
+        podList[$podListIndex]="${podName}"
+        podListIndex=$(($podListIndex+1))
     done
     if [[ "$execStr" == "" ]];then
         echo "没有匹配到要构建的指令"
+        exit 0
     fi
+
+    progressPod "$podList"
+
+    exit 0
 }
+
+function progressPod() {
+    local podList="$1"
+    if [[ "$podList" == "" ]];then
+        return 0
+    fi
+    local progressPodList=()
+    local progressIndex=0
+    for v in "$podList";do
+        execStr="curl -s -X POST -u ${username}:${appToken} '${url}/job/${v}/lastBuild/api/json?pretty=true' | jq '.number'"
+        echo "$execStr"
+        local buildNumber="$(eval "$execStr")"
+        progressPodList[$progressIndex]="${v}/${buildNumber}"
+        progressIndex=$(($progressIndex+1))
+    done
+    if [[ "$progressPodList" != "" ]];then
+        local isExit=true
+        for v in {1..500};do
+            local strTemp=""
+            for v2 in "$progressPodList";do
+                execStr="curl -s -X POST -u ${username}:${appToken} '${url}/job/${v2}/api/json?pretty=true'"
+                temp="$(eval "$execStr")"
+                local building="$(echo "$temp" | jq '.building')"
+                local duration="$(echo "$temp" | jq '.duration')"
+                local estimatedDuration="$(echo "$temp" | jq '.estimatedDuration')"
+                local result="$(echo "$temp" | jq -r '.result')"
+
+                local proportionNum="$((100*$duration/$estimatedDuration))"
+                if (($proportionNum > 100)) ;then
+                    proportionNum=99
+                fi
+                if [[ "$result" == "SUCCESS" ]];then
+                    proportionNum=100
+                fi
+                resultTemp="$result"
+                if [[ "$resultTemp" == "null" ]];then
+                    resultTemp="ing..."
+                fi
+                strTemp="${strTemp} [${v2}]:【${proportionNum}%%】【${resultTemp}】"
+                if [[ "$result" == "null" ]];then
+                    isExit=false
+                fi
+            done
+            printf "\r${strTemp}"
+            if $isExit ;then
+                break
+            fi
+            sleep 2
+        done
+        echo ""
+    fi
+    return 0
+}
+
+    # podList=("k8s-test-php-wm-light-backend-new")
+    # progressPod "$podList"
 
 main $@
