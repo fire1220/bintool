@@ -1,0 +1,121 @@
+#!/bin/bash
+
+# curl -X POST -u zhoujiandong:116c9c2abe00a4ffe91dc9f5c3b58e1c1e https://test-jenkins.weimiaocaishang.com/job/k8s-test-php-wm-light-backend-new/buildWithParameters --form 'wm_light_backend_version="0f3e47a4b455c861e40875b709f306575eae1d58"'
+
+# declare -r username=zhoujiandong
+# declare -r appToken=116c9c2abe00a4ffe91dc9f5c3b58e1c1e
+# declare -r url=https://test-jenkins.weimiaocaishang.com
+# declare -ar podNameList=(
+#     wm-light-backend=k8s-test-php-wm-light-backend-new
+#     # wm-light-backend=k8s-test-php-wm-light-backend-supervisor-crontab
+#     wm-light-frontend=k8s-test-php-wm-light-frontend-new
+#     # wm-light-frontend=k8s-test-php-wm-light-frontend-supervisor-crontab
+#     wm-light-practice=k8s-test-go-wm-light-practice
+# )
+# declare -ar paramList=(
+#     wm-light-backend=wm_light_backend_version
+#     wm-light-backend=title
+#     wm-light-frontend=wm_light_frontend_version
+#     wm-light-practice=wm_light_practice_version
+# )
+
+configInit=$(cat <<!
+# username=xxxx
+# appToken=xxxx
+# url=https://test-jenkins.xxxx.com
+# 目录和pod name的对应关系
+# podNameList=(
+#     wm-light-backend=k8s-test-php-backend-new
+#     wm-light-frontend=k8s-test-php-frontend-new
+# )
+# 目录和发布参数的对应关系
+# paramList=(
+#     wm-backend=backend_version
+#     wm-backend=title
+#     wm-frontend=frontend_version
+# )
+!
+)
+
+configPath="$HOME/config/jenkins/.jenkinsrc"
+
+declare -r dirName="$(basename "$(pwd)")"
+
+function helpInit(){
+    cat <<!
+        command [-c] commitId
+
+        第一次执行会自动生产一个配置文件:
+            1.配置文件路径：$configPath
+            2.编辑该配置文件后就可以使用了
+
+        参数：
+            -c commitId(默认选项)
+
+!
+    exit 0
+}
+
+function main(){
+    local commitId=""
+    OPTIND=1
+    while getopts ':c:h' opt;do
+        case "$opt" in
+            c)
+                commitId="$OPTARG";;
+            h)
+                helpInit
+                ;;
+        esac
+    done
+    shift $(($OPTIND-1))
+
+    if [ ! -f "$configPath" ];then
+        if [ ! -d "$(dirname "$configPath")" ];then
+            mkdir -p "$(dirname "$configPath")"
+        fi
+        echo "$configInit" > "$configPath"
+    fi
+
+    . "$configPath"
+    if [[ "$username" == "" ]] || [[ "$appToken" == "" ]] || [[ "$url" == ""  ]] || [[ "$podNameList" == "" ]] || [[ "$paramList" == "" ]];then
+        echo "请先编辑配置文件：$HOME/config/jenkins/.jenkinsrc"
+        exit 0
+    fi
+
+
+    if [[ "$commitId" == "" ]];then
+        commitId="$1"
+    fi
+
+    if [[ "$commitId" == "" ]];then
+        echo >&2 "commitId 不能为空"
+        exit 1
+    fi
+    local params=""
+    for v in "${paramList[@]}";do
+        local name="${v%%=*}"
+        local paramKey="${v#*=}"
+        if [[ "$name" != "$dirName" ]];then
+            continue
+        fi
+        params="${params} --form '${paramKey}=\"${commitId}\"'"
+    done
+
+    local execStr=""
+    for v in "${podNameList[@]}";do
+        local name="${v%%=*}"
+        local podName="${v#*=}"
+        if [[ "$name" != "$dirName" ]];then
+            continue
+        fi
+        execStr="curl -X POST -u ${username}:${appToken} ${url}/job/${podName}/buildWithParameters ${params}"
+        echo "$execStr"
+        eval "$execStr"
+    done
+    if [[ "$execStr" == "" ]];then
+        echo "没有匹配到要构建的指令"
+    fi
+}
+
+main $@
