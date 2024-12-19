@@ -7,19 +7,22 @@ configInit=$(cat <<!
 # # 是否是调试模式
 # DEBUG=true
 # 
-# # jenkins 用户名
+# # 【必须配置】 jenkins 用户名
 # USERNAME=xxxx
-# # jenkins 的 APP_TOKEN
+#
+# # 【必须配置】jenkins 的 APP_TOKEN
 # APP_TOKEN=xxxx
-# # jenkins 的地址
+#
+# # 【必须配置】jenkins 的地址
 # URL=https://test-jenkins.xxxx.com
 #
-# # 当前文件夹和 pod name 的对应关系
+# # 【必须配置】当前文件夹和 pod name 的对应关系
 # POD_NAME_LIST=(
 #     wm-light-backend=k8s-test-php-backend-new
 #     wm-light-frontend=k8s-test-php-frontend-new
 # )
-# # 当前文件夹和 jenkins 的发布参数的对应关系
+#
+# # 【必须配置】当前文件夹和 jenkins 的发布参数的对应关系
 # # 会把 git 的 commit id 传入到该参数里
 # PARAM_COMMIT_ID_LIST=(
 #     wm-backend=backend_version
