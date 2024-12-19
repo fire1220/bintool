@@ -312,8 +312,4 @@ function progressPod() {
     return 0
 }
 
-    # podList=("k8s-test-php-wm-light-frontend-new" "k8s-test-php-wm-light-frontend-supervisor-crontab")
-    # progressPod "${podList[@]}"
-    # exit 1
-
 main $@
