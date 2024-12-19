@@ -47,7 +47,7 @@ function helpInit(){
     cat <<!
         command [-c] commitId
 
-        第一次执行会自动生产一个配置文件:
+        第一次执行会自动生成一个配置文件:
             1.配置文件路径："$configPath"
             2.编辑该配置文件后就可以使用了
 
