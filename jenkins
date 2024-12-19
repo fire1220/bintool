@@ -33,11 +33,11 @@ configInit=$(cat <<!
 !
 )
 
-configPath="$HOME/.config/jenkins/.jenkinsrc"
+CONFIG_PATH="$HOME/.config/jenkins/.jenkinsrc"
 
-declare -r dirName="$(basename "$(pwd)")"
+declare -r DIR_NAME="$(basename "$(pwd)")"
 
-declare -r timeTemp="$(date +'%s')"
+declare -r SCRIPT_EXEC_TIME="$(date +'%s')"
 
 if [[ "$DEBUG" != "true" ]] || [[ "$DEBUG" != "false" ]];then
     DEBUG=false
@@ -48,7 +48,7 @@ function helpInit(){
         command [-c] commitId
 
         第一次执行会自动生成一个配置文件:
-            1.配置文件路径："$configPath"
+            1.配置文件路径："$CONFIG_PATH"
             2.编辑该配置文件后就可以使用了
 
         参数：
@@ -59,14 +59,14 @@ function helpInit(){
 }
 
 
-if [ ! -f "$configPath" ];then
-    if [ ! -d "$(dirname "$configPath")" ];then
-        mkdir -p "$(dirname "$configPath")"
+if [ ! -f "$CONFIG_PATH" ];then
+    if [ ! -d "$(dirname "$CONFIG_PATH")" ];then
+        mkdir -p "$(dirname "$CONFIG_PATH")"
     fi
-    echo "$configInit" > "$configPath"
+    echo "$configInit" > "$CONFIG_PATH"
 fi
 
-. "$configPath"
+. "$CONFIG_PATH"
 
 function main(){
     local commitId=""
@@ -83,7 +83,7 @@ function main(){
     shift $(($OPTIND-1))
 
     if [[ "$USERNAME" == "" ]] || [[ "$APP_TOKEN" == "" ]] || [[ "$URL" == ""  ]] || [[ "$POD_NAME_LIST" == "" ]] || [[ "$PARAM_COMMIT_ID_LIST" == "" ]];then
-        echo "请先编辑配置文件：$configPath"
+        echo "请先编辑配置文件：$CONFIG_PATH"
         exit 0
     fi
 
@@ -100,7 +100,7 @@ function main(){
     for v in "${PARAM_COMMIT_ID_LIST[@]}";do
         local name="${v%%=*}"
         local paramKey="${v#*=}"
-        if [[ "$name" != "$dirName" ]];then
+        if [[ "$name" != "$DIR_NAME" ]];then
             continue
         fi
         params="${params} --form '${paramKey}=\"${commitId}\"'"
@@ -112,7 +112,7 @@ function main(){
     for v in "${POD_NAME_LIST[@]}";do
         local name="${v%%=*}"
         local podName="${v#*=}"
-        if [[ "$name" != "$dirName" ]];then
+        if [[ "$name" != "$DIR_NAME" ]];then
             continue
         fi
         execStr="curl -X POST -u ${USERNAME}:${APP_TOKEN} ${URL}/job/${podName}/buildWithParameters ${params}"
@@ -125,7 +125,7 @@ function main(){
     done
     if [[ "$execStr" == "" ]];then
         echo "没有匹配到要构建的指令,需要在配置文件里添加"
-        echo "配置文件路径:${configPath}"
+        echo "配置文件路径:${CONFIG_PATH}"
         exit 0
     fi
 
@@ -183,7 +183,7 @@ function progressFmt(){
     if (( $timestamp > 9000000000 ));then
         timestamp=$(($timestamp/1000))
     fi
-    if (($timestamp < $timeTemp));then
+    if (($timestamp < $SCRIPT_EXEC_TIME));then
         local point=""
         for ((i=0;i<($v%6);i++)) ;do
             point="${point}."
@@ -192,7 +192,7 @@ function progressFmt(){
         return 11
     fi
     local now="$(date +'%s')"
-    local durationTime=$(($now-$timeTemp))
+    local durationTime=$(($now-$SCRIPT_EXEC_TIME))
     local proportionNum="$((100000*$durationTime/$estimatedDuration))"
     if (($proportionNum > 100)) ;then
         proportionNum=99
