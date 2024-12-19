@@ -177,18 +177,22 @@ function progressFmt(){
         return 13
     fi
     if [[ "$timestamp" == "" ]];then
-        printf "\r没有获取到时间%s        " "${point}."
+        printf "\r没有获取到时间%s" "${point}."
         return 11
     fi
     if (( $timestamp > 9000000000 ));then
         timestamp=$(($timestamp/1000))
     fi
     if (($timestamp < $SCRIPT_EXEC_TIME));then
-        local point=""
-        for ((i=0;i<($v%6);i++)) ;do
-            point="${point}."
+        local pointList=('-' '\\' '|' '/')
+        for ((i=0;i<=($v%4);i++)) ;do
+            point="${pointList[$i]}"
         done
-        printf "\r正在获取中%s        " "${point}."
+        if $DEBUG ;then
+            printf "\r正在获取中(jenkinsTimestamp:${timestamp};scriptExecTime:${SCRIPT_EXEC_TIME})%s" "${point}"
+        else
+            printf "\r正在获取中%s" "${point}"
+        fi
         return 11
     fi
     local now="$(date +'%s')"
@@ -218,36 +222,57 @@ function progressPod() {
     if [[ "$progressPodList" == "" ]];then
         return 0
     fi
-    local isExit=false
     local endStr=""
     local v2Index=0
     declare -a progressRet=()
+    declare -a progressRequest=()
     for v in {1..500};do
         local strTemp=""
+        local strTempSuffix=""
         local isContinue=false
         local tempNum="${#progressPodList[@]}"
         v2Index=0
         for v2 in ${progressPodList[@]};do
             isContinue=false
             local strTempCurrent="${progressRet[$v2Index]}"
+            local execStr="${progressRequest[$v2Index]}"
+            local statusProgressFmt=0
             if [[ "$strTempCurrent" == "" ]];then
-                local execStr="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/${v2}/api/json?pretty=true'"
+                execStr="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/${v2}/api/json?pretty=true'"
+                if $DEBUG ;then
+                    progressRequest[$v2Index]="$execStr"
+                    if (($v2Index>0));then
+                        endStr="${endStr}\033[1B"
+                    fi
+                    if [[ "$strTemp" == "" ]];then
+                        strTemp="${execStr}"
+                    else
+                        strTemp="${strTemp}\n${execStr}"
+                        strTempSuffix="${strTempSuffix}\033[1A"
+                    fi
+                fi
                 local temp="$(eval "$execStr")"
                 strTempCurrent=$(progressFmt "$temp")
                 statusProgressFmt="$?"
+            elif $DEBUG ;then
+                if (($v2Index>0));then
+                    endStr="${endStr}\033[1B"
+                fi
+                if [[ "$strTemp" == "" ]];then
+                    strTemp="${execStr}"
+                else
+                    strTemp="${strTemp}\n${execStr}"
+                    strTempSuffix="${strTempSuffix}\033[1A"
+                fi
             fi
+            local isBreak=false
             case "$statusProgressFmt" in
                 11)
                     isContinue=true
-                    printf "\r${strTempCurrent}"
-                    break
+                    isBreak=true
                     ;;
                 12)
                     progressRet[$v2Index]="$strTempCurrent"
-                    tempNum=$(($tempNum-1))
-                    if (($tempNum<=0));then
-                        isExit=true
-                    fi
                     ;;
                 13)
                     exit 3
@@ -262,16 +287,20 @@ function progressPod() {
             if [[ "$strTemp" == "" ]];then
                 strTemp="${strTempCurrent}"
             else
-                strTemp="${strTemp}\n${strTempCurrent}\033[1A"
+                strTemp="${strTemp}\n${strTempCurrent}"
+                strTempSuffix="\033[1A${strTempSuffix}"
+            fi
+            if $isBreak ;then
+                break
             fi
         done
-        printf "\r${strTemp}"
-        if $isExit ;then
+        printf "\r${strTemp}${strTempSuffix}"
+        if [[ "${#progressPodList[@]}" == "${#progressRet[@]}" ]];then
             break
         fi
         if $isContinue ;then
             sleep 2
-            progressPodList=$(progressPodListFun "$1")
+            progressPodList=($(progressPodListFun $@))
             if [[ "$progressPodList" == "" ]];then
                 return 0
             fi
