@@ -22,7 +22,9 @@ configPath="$HOME/.config/jenkins/.jenkinsrc"
 
 declare -r dirName="$(basename "$(pwd)")"
 
-timeTemp="$(date +'%s')"
+declare -r timeTemp="$(date +'%s')"
+
+declare -r debug=false
 
 function helpInit(){
     cat <<!
@@ -97,7 +99,9 @@ function main(){
             continue
         fi
         execStr="curl -X POST -u ${username}:${appToken} ${url}/job/${podName}/buildWithParameters ${params}"
-        echo "$execStr"
+        if $debug ;then
+            echo "$execStr"
+        fi
         eval "$execStr"
         podList[$podListIndex]="${podName}"
         podListIndex=$(($podListIndex+1))
