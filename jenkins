@@ -107,7 +107,7 @@ function main(){
         podListIndex=$(($podListIndex+1))
     done
     if [[ "$execStr" == "" ]];then
-        echo "没有匹配到要构建的指令,需要在配置文件里添加,详细参考-h参数"
+        echo "没有匹配到要构建的指令,需要在配置文件里添加"
         exit 0
     fi
 
