@@ -108,6 +108,7 @@ function main(){
     done
     if [[ "$execStr" == "" ]];then
         echo "没有匹配到要构建的指令,需要在配置文件里添加"
+        echo "配置文件路径:${configPath}"
         exit 0
     fi
 
