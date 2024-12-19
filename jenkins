@@ -1,20 +1,29 @@
 #!/bin/bash
 
 configInit=$(cat <<!
-# username=xxxx
-# appToken=xxxx
-# url=https://test-jenkins.xxxx.com
-# 目录和pod name的对应关系
-# podNameList=(
+#
+# # 该配置是shell脚本的一部分,注意等号两边不能有空格
+# 
+# # jenkins 用户名
+# USERNAME=xxxx
+# # jenkins 的 APP_TOKEN
+# APP_TOKEN=xxxx
+# # jenkins 的地址
+# URL=https://test-jenkins.xxxx.com
+#
+# # 当前文件夹和 pod name 的对应关系
+# POD_NAME_LIST=(
 #     wm-light-backend=k8s-test-php-backend-new
 #     wm-light-frontend=k8s-test-php-frontend-new
 # )
-# 目录和发布参数的对应关系
-# paramList=(
+# # 当前文件夹和 jenkins 的发布参数的对应关系
+# # 会把 git 的 commit id 传入到该参数里
+# PARAM_COMMIT_ID_LIST=(
 #     wm-backend=backend_version
 #     wm-backend=title
 #     wm-frontend=frontend_version
 # )
+#
 !
 )
 
@@ -65,7 +74,7 @@ function main(){
     done
     shift $(($OPTIND-1))
 
-    if [[ "$username" == "" ]] || [[ "$appToken" == "" ]] || [[ "$url" == ""  ]] || [[ "$podNameList" == "" ]] || [[ "$paramList" == "" ]];then
+    if [[ "$USERNAME" == "" ]] || [[ "$APP_TOKEN" == "" ]] || [[ "$URL" == ""  ]] || [[ "$POD_NAME_LIST" == "" ]] || [[ "$PARAM_COMMIT_ID_LIST" == "" ]];then
         echo "请先编辑配置文件：$configPath"
         exit 0
     fi
@@ -80,7 +89,7 @@ function main(){
         exit 1
     fi
     local params=""
-    for v in "${paramList[@]}";do
+    for v in "${PARAM_COMMIT_ID_LIST[@]}";do
         local name="${v%%=*}"
         local paramKey="${v#*=}"
         if [[ "$name" != "$dirName" ]];then
@@ -92,13 +101,13 @@ function main(){
     local podList=()
     local podListIndex=0
     local execStr=""
-    for v in "${podNameList[@]}";do
+    for v in "${POD_NAME_LIST[@]}";do
         local name="${v%%=*}"
         local podName="${v#*=}"
         if [[ "$name" != "$dirName" ]];then
             continue
         fi
-        execStr="curl -X POST -u ${username}:${appToken} ${url}/job/${podName}/buildWithParameters ${params}"
+        execStr="curl -X POST -u ${USERNAME}:${APP_TOKEN} ${URL}/job/${podName}/buildWithParameters ${params}"
         if $debug ;then
             echo "$execStr"
         fi
@@ -123,7 +132,7 @@ function progressPodListFun(){
     local progressPodList=()
     local progressIndex=0
     for v in "${podList[@]}";do
-        local execStr="curl -s -X POST -u ${username}:${appToken} '${url}/job/${v}/lastBuild/api/json?pretty=true' | jq '.number'"
+        local execStr="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/${v}/lastBuild/api/json?pretty=true' | jq '.number'"
         local buildNumber="$(eval "$execStr")"
         progressPodList[$progressIndex]="${v}/${buildNumber}"
         progressIndex=$(($progressIndex+1))
@@ -214,7 +223,7 @@ function progressPod() {
             isContinue=false
             local strTempCurrent="${progressRet[$v2Index]}"
             if [[ "$strTempCurrent" == "" ]];then
-                local execStr="curl -s -X POST -u ${username}:${appToken} '${url}/job/${v2}/api/json?pretty=true'"
+                local execStr="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/${v2}/api/json?pretty=true'"
                 local temp="$(eval "$execStr")"
                 strTempCurrent=$(progressFmt "$temp")
                 statusProgressFmt="$?"
