@@ -9,7 +9,7 @@ function helpInfo(){
 
         参数：
             -n              只提交到当前分支，不进行切换分支
-            -j / --jenkins  调用jenkins命令把commit_id作为参数
+            -j / --jenkins  把commit_id作为参数,调用jenkins命令
             commitInfo      提交的git commit 信息
 
         说明：
