@@ -56,6 +56,9 @@ function helpInit(){
             -d 查看发布详情
                 参数格式：jobName/buildNumber
                 案例：k8s-test-php-wm-light-backend-new/864
+            -l 查看最后发布的信息
+                参数格式：jobName
+                案例：k8s-test-php-wm-light-backend-new
 
 !
     exit 0
@@ -73,14 +76,17 @@ fi
 
 
 declare -r CURL_SCRIPT_BUILD="curl -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/buildWithParameters' %s"
-declare -r CURL_SCRIPT_LAST_BUILD_NUMBER="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/lastBuild/api/json?pretty=true' | jq '.number'"
+declare -r CURL_SCRIPT_LAST_BUILD="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/lastBuild/api/json?pretty=true'"
 declare -r CURL_SCRIPT_DETAILS="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/api/json?pretty=true'"
+
+declare -r CURL_SCRIPT_LAST_BUILD_NUMBER="${CURL_SCRIPT_LAST_BUILD} | jq '.number'"
 
 function main(){
     local mainParam=""
     local isDetails=false
+    local isLastBuild=false
     OPTIND=1
-    while getopts ':c:hd' opt;do
+    while getopts ':c:hdl' opt;do
         case "$opt" in
             c)
                 mainParam="$OPTARG";;
@@ -89,6 +95,9 @@ function main(){
                 ;;
             d)
                 isDetails=true
+                ;;
+            l)
+                isLastBuild=true
                 ;;
         esac
     done
@@ -99,7 +108,6 @@ function main(){
         exit 0
     fi
 
-
     if [[ "$mainParam" == "" ]];then
         mainParam="$1"
     fi
@@ -109,7 +117,33 @@ function main(){
         exit 0
     fi
 
+    if $isLastBuild ;then
+        lastBuild "$mainParam"
+        exit 0
+    fi
+
     buildAndProgress "$mainParam"
+}
+
+# 查看最后发布的信息
+function lastBuild(){
+    local jobName="$1"
+    if [[ "$jobName" == "" ]];then
+        cat >&2 <<!
+            查看最后发布的详情参数不能为空
+
+            参数格式：
+                jobName
+
+            案例：
+                k8s-test-php-wm-light-backend-new
+!
+        exit 1
+    fi
+    execStr=$(printf "$CURL_SCRIPT_LAST_BUILD" "$jobName")
+    eval "$execStr"
+    echo ""
+    return 0
 }
 
 # 查看发布的详情
@@ -129,6 +163,7 @@ function details(){
     fi
     execStr=$(printf "$CURL_SCRIPT_DETAILS" "$jobNameAndbuildNumber")
     eval "$execStr"
+    echo ""
     return 0
 }
 
