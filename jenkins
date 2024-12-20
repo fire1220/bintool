@@ -45,7 +45,7 @@ fi
 
 function helpInit(){
     cat <<!
-        command [-c] commitId
+        command [-cd] commitId
 
         第一次执行会自动生成一个配置文件:
             1.配置文件路径："$CONFIG_PATH"
@@ -53,6 +53,9 @@ function helpInit(){
 
         参数：
             -c commitId(默认选项)
+            -d 查看发布详情
+                参数格式：jobName/buildNumber
+                案例：k8s-test-php-wm-light-backend-new/864
 
 !
     exit 0
@@ -74,14 +77,18 @@ declare -r CURL_SCRIPT_LAST_BUILD_NUMBER="curl -s -X POST -u ${USERNAME}:${APP_T
 declare -r CURL_SCRIPT_DETAILS="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/api/json?pretty=true'"
 
 function main(){
-    local mainParm=""
+    local mainParam=""
+    local isDetails=false
     OPTIND=1
-    while getopts ':c:h' opt;do
+    while getopts ':c:hd' opt;do
         case "$opt" in
             c)
-                mainParm="$OPTARG";;
+                mainParam="$OPTARG";;
             h)
                 helpInit
+                ;;
+            d)
+                isDetails=true
                 ;;
         esac
     done
@@ -93,13 +100,39 @@ function main(){
     fi
 
 
-    if [[ "$mainParm" == "" ]];then
-        mainParm="$1"
+    if [[ "$mainParam" == "" ]];then
+        mainParam="$1"
     fi
 
-    buildAndProgress "$mainParm"
+    if $isDetails ;then
+        details "$mainParam"
+        exit 0
+    fi
+
+    buildAndProgress "$mainParam"
 }
 
+# 查看发布的详情
+function details(){
+    local jobNameAndbuildNumber="$1"
+    if [[ "$jobNameAndbuildNumber" == "" ]] ;then
+        cat >&2 <<!
+            查看发布详情的参数不能为空
+
+            参数格式：
+                jobName/buildNumber
+
+            案例：
+                k8s-test-php-wm-light-backend-new/864
+!
+        exit 1
+    fi
+    execStr=$(printf "$CURL_SCRIPT_DETAILS" "$jobNameAndbuildNumber")
+    eval "$execStr"
+    return 0
+}
+
+# 构建并且显示构建进度
 function buildAndProgress(){
     commitId="$1"
     if [[ "$commitId" == "" ]];then
