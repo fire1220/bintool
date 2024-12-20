@@ -74,12 +74,12 @@ declare -r CURL_SCRIPT_LAST_BUILD_NUMBER="curl -s -X POST -u ${USERNAME}:${APP_T
 declare -r CURL_SCRIPT_DETAILS="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/api/json?pretty=true'"
 
 function main(){
-    local commitId=""
+    local mainParm=""
     OPTIND=1
     while getopts ':c:h' opt;do
         case "$opt" in
             c)
-                commitId="$OPTARG";;
+                mainParm="$OPTARG";;
             h)
                 helpInit
                 ;;
@@ -93,16 +93,16 @@ function main(){
     fi
 
 
-    if [[ "$commitId" == "" ]];then
-        commitId="$1"
+    if [[ "$mainParm" == "" ]];then
+        mainParm="$1"
     fi
 
-    if [[ "$commitId" == "" ]];then
-        echo >&2 "commitId 不能为空"
-        exit 1
-    fi
+    buildAndProgress "$mainParm"
 
-    buildAndProgress
+    # if [[ "$commitId" == "" ]];then
+    #     echo >&2 "commitId 不能为空"
+    #     exit 1
+    # fi
 
     # local params=""
     # for v in "${PARAM_COMMIT_ID_LIST[@]}";do
@@ -143,6 +143,11 @@ function main(){
 }
 
 function buildAndProgress(){
+    commitId="$1"
+    if [[ "$commitId" == "" ]];then
+        echo >&2 "commitId 不能为空"
+        exit 1
+    fi
     local params=""
     for v in "${PARAM_COMMIT_ID_LIST[@]}";do
         local name="${v%%=*}"
