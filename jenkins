@@ -98,48 +98,6 @@ function main(){
     fi
 
     buildAndProgress "$mainParm"
-
-    # if [[ "$commitId" == "" ]];then
-    #     echo >&2 "commitId 不能为空"
-    #     exit 1
-    # fi
-
-    # local params=""
-    # for v in "${PARAM_COMMIT_ID_LIST[@]}";do
-    #     local name="${v%%=*}"
-    #     local paramKey="${v#*=}"
-    #     if [[ "$name" != "$DIR_NAME" ]];then
-    #         continue
-    #     fi
-    #     params="${params} --form '${paramKey}=\"${commitId}\"'"
-    # done
-
-    # local podList=()
-    # local podListIndex=0
-    # local execStr=""
-    # for v in "${POD_NAME_LIST[@]}";do
-    #     local name="${v%%=*}"
-    #     local podName="${v#*=}"
-    #     if [[ "$name" != "$DIR_NAME" ]];then
-    #         continue
-    #     fi
-    #     # execStr="curl -X POST -u ${USERNAME}:${APP_TOKEN} ${URL}/job/${podName}/buildWithParameters ${params}"
-    #     execStr=$(printf "$CURL_SCRIPT_BUILD" "${podName}" "${params}")
-    #     if $DEBUG ;then
-    #         echo "$execStr"
-    #     fi
-    #     eval "$execStr"
-    #     podList[$podListIndex]="${podName}"
-    #     podListIndex=$(($podListIndex+1))
-    # done
-    # if [[ "$execStr" == "" ]];then
-    #     echo "没有匹配到要构建的指令,需要在配置文件里添加"
-    #     echo "配置文件路径:${CONFIG_PATH}"
-    #     exit 0
-    # fi
-
-    # progressPod "${podList[@]}"
-    # exit 0
 }
 
 function buildAndProgress(){
