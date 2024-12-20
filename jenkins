@@ -57,7 +57,7 @@ function helpInit(){
                 参数格式：jobName/buildNumber
                 案例：k8s-test-php-wm-light-backend-new/864
             -l 查看最后发布的信息
-                参数格式：jobName
+                可选参数格式：jobName(如果不传jobName则进入列表手动选择)
                 案例：k8s-test-php-wm-light-backend-new
 
 !
@@ -128,21 +128,35 @@ function main(){
 # 查看最后发布的信息
 function lastBuild(){
     local jobName="$1"
-    if [[ "$jobName" == "" ]];then
-        cat >&2 <<!
-            查看最后发布的详情参数不能为空
-
-            参数格式：
-                jobName
-
-            案例：
-                k8s-test-php-wm-light-backend-new
-!
+    if [[ "$jobName" != "" ]];then
+        execStr=$(printf "$CURL_SCRIPT_LAST_BUILD" "$jobName")
+        eval "$execStr"
         exit 1
     fi
-    execStr=$(printf "$CURL_SCRIPT_LAST_BUILD" "$jobName")
-    eval "$execStr"
-    echo ""
+    local i=1
+    declare -a podNameList=()
+    for v in "${POD_NAME_LIST[@]}";do
+        podName="${v#*=}"
+        podNameList[$i]="$podName"
+        printf "%5s %-30s\n" "${i}" "${podName}"
+        i=$(($i+1))
+    done
+    declare -i row
+    while read -p "select num:" -r row;do
+        local i=1
+        for v in "${podNameList[@]}";do
+            printf "%5s %-30s\n" "${i}" "${v}"
+            i=$(($i+1))
+        done
+        pod="${podNameList[$row]}"
+        if [[ "$pod" == "" ]];then
+            continue
+        fi
+        execStr=$(printf "$CURL_SCRIPT_LAST_BUILD" "$pod")
+        eval "$execStr"
+        echo ""
+        return 0
+    done
     return 0
 }
 
