@@ -175,9 +175,40 @@ function details(){
 !
         exit 1
     fi
-    execStr=$(printf "$CURL_SCRIPT_DETAILS" "$jobNameAndbuildNumber")
-    eval "$execStr"
-    echo ""
+    if [[ "$jobNameAndbuildNumber" =~ / ]];then
+        execStr=$(printf "$CURL_SCRIPT_DETAILS" "$jobNameAndbuildNumber")
+        eval "$execStr"
+        echo ""
+        return 0
+    fi
+    local buildNumber="$jobNameAndbuildNumber"
+    local jobNameList=()
+    local i=0
+    for v in "${POD_NAME_LIST[@]}" ;do
+        ((i++))
+        pod="${v#*=}"
+        jobNameList[$i]="$pod"
+        printf "%5s %-30s\n" "$i" "$pod"
+    done
+    declare -i row
+    while read -p "select num:" -r row ; do
+        local i=0
+        for v in "${jobNameList[@]}";do
+            ((i++))
+            printf "%5s %-30s\n" "$i" "$v"
+        done
+        if (( $row <= 0 )) || (( $row > ${#jobNameList[@]}));then
+            continue
+        fi
+        
+        execStr=$(printf "$CURL_SCRIPT_DETAILS" "${jobNameList[$row]}/${buildNumber}")
+        eval "$execStr"
+        echo ""
+        if $DEBUG ;then
+            echo "$execStr"
+        fi
+        return 0
+    done
     return 0
 }
 
