@@ -200,7 +200,6 @@ function details(){
         if (( $row <= 0 )) || (( $row > ${#jobNameList[@]}));then
             continue
         fi
-        
         execStr=$(printf "$CURL_SCRIPT_DETAILS" "${jobNameList[$row]}/${buildNumber}")
         eval "$execStr"
         echo ""
