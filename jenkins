@@ -252,11 +252,11 @@ function buildAndProgress(){
         exit 0
     fi
 
-    original_stty=$(stty -g) # 保存当前终端设置
-    stty -echo -icanon # 禁用输入（echo 和 icanon）
+    local sttyBak=$(stty -g)
+    stty -echo -icanon
     progressPod "${podList[@]}"
     read -t 1 -r row
-    stty "$original_stty" # 恢复终端设置
+    stty "$sttyBak"
     echo ""
     exit 0
 }
