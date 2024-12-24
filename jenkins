@@ -52,6 +52,7 @@ function helpInit(){
             2.编辑该配置文件后就可以使用了
 
         参数：
+            -h 帮助
             -c commitId(默认选项)
             -d 查看发布详情
                 参数格式：jobName/buildNumber
@@ -86,7 +87,7 @@ function main(){
     local isDetails=false
     local isLastBuild=false
     OPTIND=1
-    while getopts ':c:hdl' opt;do
+    while getopts ':c:-:hdl' opt;do
         case "$opt" in
             c)
                 mainParam="$OPTARG";;
@@ -98,6 +99,16 @@ function main(){
                 ;;
             l)
                 isLastBuild=true
+                ;;
+            -)
+                longArgVal="${OPTARG%%=*}"
+                if [[ "$longArgVal" == "${OPTARG}" ]];then
+                    case "$longArgVal" in
+                    "help")
+                        helpInit
+                        ;;
+                    esac
+                fi
                 ;;
         esac
     done
