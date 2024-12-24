@@ -237,7 +237,6 @@ function buildAndProgress(){
         if [[ "$name" != "$DIR_NAME" ]];then
             continue
         fi
-        # execStr="curl -X POST -u ${USERNAME}:${APP_TOKEN} ${URL}/job/${podName}/buildWithParameters ${params}"
         execStr=$(printf "$CURL_SCRIPT_BUILD" "${podName}" "${params}")
         if $DEBUG ;then
             echo "$execStr"
@@ -267,7 +266,6 @@ function progressPodListFun(){
     local progressPodList=()
     local progressIndex=0
     for v in "${podList[@]}";do
-        # local execStr="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/${v}/lastBuild/api/json?pretty=true' | jq '.number'"
         execStr=$(printf "$CURL_SCRIPT_LAST_BUILD_NUMBER" "${v}")
         local buildNumber="$(eval "$execStr")"
         progressPodList[$progressIndex]="${v}/${buildNumber}"
@@ -367,7 +365,6 @@ function progressPod() {
             local execStr="${progressRequest[$v2Index]}"
             local statusProgressFmt=0
             if [[ "$strTempCurrent" == "" ]];then
-                # execStr="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/${v2}/api/json?pretty=true'"
                 execStr=$(printf "$CURL_SCRIPT_DETAILS" "${v2}")
                 if $DEBUG ;then
                     progressRequest[$v2Index]="$execStr"
