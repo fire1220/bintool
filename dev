@@ -8,7 +8,7 @@ function helpInfo(){
             $commandName [-nj] [--jenkins] "commitInfo"
 
         参数：
-            -n              只提交到当前分支，不进行切换分支
+            -s / --self     只提交到当前分支，不进行切换分支
             -j / --jenkins  把commit_id作为参数,调用jenkins命令
             commitInfo      提交的git commit 信息
 
@@ -27,14 +27,14 @@ function helpInfo(){
 isPostJenkins=false
 isNoCheckout=false
 OPTIND=1
-while getopts "nh-:j" opt;do
+while getopts ":-:jsh" opt;do
     case "$opt" in
-        n)
+        s)
             isNoCheckout=true
-        ;;
+            ;;
         h)
             helpInfo
-        ;;
+            ;;
         j)
             isPostJenkins=true
             ;;
@@ -44,10 +44,13 @@ while getopts "nh-:j" opt;do
                 case "$argKeyLong" in
                     "help")
                         helpInfo
-                    ;;
+                        ;;
                     "jenkins")
                         isPostJenkins=true
-                    ;;
+                        ;;
+                    "self")
+                        isNoCheckout=true
+                        ;;
                 esac
                 continue
             fi
