@@ -274,7 +274,9 @@ function buildAndProgress(){
         if $DEBUG ;then
             echo "$execStr"
         fi
-        eval "$execStr"
+        eval "$execStr" || {
+            exit 1
+        }
         podList[$podListIndex]="${podName}"
         podListIndex=$(($podListIndex+1))
     done
