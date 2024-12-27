@@ -275,7 +275,8 @@ function buildAndProgress(){
             echo "$execStr"
         fi
         eval "$execStr" || {
-            exit 1
+            echo -e "\033[31m【${podName} build error】\033[0m"
+            continue
         }
         podList[$podListIndex]="${podName}"
         podListIndex=$(($podListIndex+1))
@@ -285,7 +286,9 @@ function buildAndProgress(){
         echo "配置文件路径:${CONFIG_PATH}"
         exit 0
     fi
-
+    if ((${#podList[@]} == 0));then
+        exit 0
+    fi
     local sttyBak=$(stty -g)
     stty -echo -icanon
     progressPod "${podList[@]}"
