@@ -52,14 +52,17 @@ function helpInit(){
             2.编辑该配置文件后就可以使用了
 
         参数：
-            -h / --help     帮助
-            -c / commitid   commitId(默认选项)
-            -d / details    查看发布详情
-                                参数格式：jobName/buildNumber
-                                案例：k8s-test-php-wm-light-backend-new/864
-            -l / lastinfo   查看最后发布的信息
-                                可选参数格式：jobName(如果不传jobName则进入列表手动选择)
-                                案例：k8s-test-php-wm-light-backend-new
+            -h / --help                     帮助
+            -c / commitid  commit_id        commitId(默认选项)
+            -d / details   [build_number]   查看发布详情
+                                                如果不传入[build_number]则会选择pod的最新发布的详情，等同于-l
+                                                参数格式：buildNumber 或 jobName/buildNumber
+                                                案例1：864
+                                                案例2：k8s-test-php-wm-light-backend-new/864
+                                                如果是buildNumber这种形式，则会进入配置的服务器列表，选择对应的服务器即可
+            -l / lastinfo                   查看最后发布的信息
+                                                可选参数格式：jobName(如果不传jobName则进入列表手动选择)
+                                                案例：k8s-test-php-wm-light-backend-new
 
 !
     exit 0
@@ -82,15 +85,20 @@ declare -r CURL_SCRIPT_DETAILS="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${U
 
 declare -r CURL_SCRIPT_LAST_BUILD_NUMBER="${CURL_SCRIPT_LAST_BUILD} | jq '.number'"
 
+# 在配置列表中获取pod name
+declare READ_CONFIG_JOB_NAME=""
+
 function main(){
     local mainParam=""
     local isDetails=false
     local isLastBuild=false
+    local commitId=""
     OPTIND=1
     while getopts ':c:-:hdl' opt;do
         case "$opt" in
             c)
-                mainParam="$OPTARG";;
+                commitId="$OPTARG"
+                ;;
             h)
                 helpInit
                 ;;
@@ -112,7 +120,7 @@ function main(){
                             echo "param --${longArgKey} 的值不能为空"
                             exit 1
                         fi
-                        mainParam="$longArgVal"
+                        commitId="$longArgVal"
                         ;;
                     "details")
                         if [[ "$longArgVal" == "details" ]] || [[ "$longArgVal" == "" ]] || [[ "$longArgVal" == "true" ]];then
@@ -141,21 +149,45 @@ function main(){
         exit 0
     fi
 
-    if [[ "$mainParam" == "" ]];then
-        mainParam="$1"
-    fi
+    mainParam="$1"
 
     if $isDetails ;then
-        details "$mainParam"
+        local jobNameAndbuildNumber="$mainParam"
+        if [[ "$jobNameAndbuildNumber" == "" ]];then
+            getJobNameByRead
+            if [[ "$READ_CONFIG_JOB_NAME" == "" ]];then
+                exit 0
+            fi
+            lastBuildId="$(lastBuild "$READ_CONFIG_JOB_NAME"| jq -r '.id')"||{
+                type jq &> /dev/null || {
+                    cat <<!
+            $(echo -e "\033[31m 需要安装jq命令\033[0m：")
+                Linux: yum install jq
+                MacOS: brew install jq
+!
+                }
+                echo "$lastBuildId"
+                exit 1
+            }
+            if [[ "$lastBuildId" == "" ]];then
+                echo "没有找到对应的id"
+            fi
+            jobNameAndbuildNumber="${READ_CONFIG_JOB_NAME}/${lastBuildId}"
+        fi
+        details "$jobNameAndbuildNumber"
         exit 0
     fi
 
     if $isLastBuild ;then
-        lastBuild "$mainParam"
+        local jobName="$mainParam"
+        lastBuild "$jobName"
         exit 0
     fi
 
-    buildAndProgress "$mainParam"
+    if [[ "$commitId" == "" ]];then
+        commitId="$mainParam"
+    fi
+    buildAndProgress "$commitId"
 }
 
 # 查看最后发布的信息
@@ -177,16 +209,44 @@ function lastBuild(){
     declare -i row
     while read -p "select num:" -r row;do
         local i=1
+        jobName="${podNameList[$row]}"
+        if [[ "$jobName" == "" ]];then
+            for v in "${podNameList[@]}";do
+                printf "%5s %-30s\n" "${i}" "${v}"
+                i=$(($i+1))
+            done
+            continue
+        fi
+        execStr=$(printf "$CURL_SCRIPT_LAST_BUILD" "$jobName")
+        eval "$execStr"
+        echo ""
+        return 0
+    done
+    return 0
+}
+
+# 在配置列表中获取jobName就是对应的pod
+function getJobNameByRead(){
+    local i=1
+    declare -a podNameList=()
+    for v in "${POD_NAME_LIST[@]}";do
+        podName="${v#*=}"
+        podNameList[$i]="$podName"
+        printf "%5s %-30s\n" "${i}" "${podName}"
+        i=$(($i+1))
+    done
+    declare -i row
+    while read -p "select num:" -r row;do
+        local i=1
         for v in "${podNameList[@]}";do
             printf "%5s %-30s\n" "${i}" "${v}"
             i=$(($i+1))
         done
-        pod="${podNameList[$row]}"
-        if [[ "$pod" == "" ]];then
+        jobName="${podNameList[$row]}"
+        if [[ "$jobName" == "" ]];then
             continue
         fi
-        execStr=$(printf "$CURL_SCRIPT_LAST_BUILD" "$pod")
-        eval "$execStr"
+        READ_CONFIG_JOB_NAME="$jobName"
         echo ""
         return 0
     done
