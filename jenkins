@@ -286,11 +286,11 @@ function details(){
     declare -i row
     while read -p "select num:" -r row ; do
         local i=0
-        for v in "${jobNameList[@]}";do
-            ((i++))
-            printf "%5s %-30s\n" "$i" "$v"
-        done
         if (( $row <= 0 )) || (( $row > ${#jobNameList[@]}));then
+            for v in "${jobNameList[@]}";do
+                ((i++))
+                printf "%5s %-30s\n" "$i" "$v"
+            done
             continue
         fi
         execStr=$(printf "$CURL_SCRIPT_DETAILS" "${jobNameList[$row]}/${buildNumber}")
