@@ -378,26 +378,30 @@ function progressPodListFun(){
 #    12 exit
 #    13 error
 function progressFmt(){
-    local temp="$1"
+    local runResporse="$1"
+    local buildBeginTimeInt="$2"
     local building
     local estimatedDuration
     local timestamp
     local result
     local isJqError=true
-    building="$(echo "$temp" | jq '.building')" && {
+    if [[ "$buildBeginTimeInt" == "" ]];then
+        buildBeginTimeInt=$SCRIPT_EXEC_TIME
+    fi
+    building="$(echo "$runResporse" | jq '.building')" && {
         isJqError=false
     }
-    estimatedDuration="$(echo "$temp" | jq '.estimatedDuration')" && {
+    estimatedDuration="$(echo "$runResporse" | jq '.estimatedDuration')" && {
         isJqError=false
     }
-    timestamp="$(echo "$temp" | jq -r '.timestamp')" && {
+    timestamp="$(echo "$runResporse" | jq -r '.timestamp')" && {
         isJqError=false
     }
-    result="$(echo "$temp" | jq -r '.result')" && {
+    result="$(echo "$runResporse" | jq -r '.result')" && {
         isJqError=false
     }
     if $isJqError ;then
-        echo >&2 "$temp"
+        echo >&2 "$runResporse"
         echo >&2 "数据解析失败,不是一个有效的json"
         return 13
     fi
@@ -409,7 +413,7 @@ function progressFmt(){
         timestamp=$(($timestamp/1000))
     fi
     if (($timestamp < $SCRIPT_EXEC_TIME));then
-        local pointList=('-' '\\' '|' '/')
+        declare -a pointList=('-' '\\' '|' '/')
         for ((i=0;i<=($v%4);i++)) ;do
             point="${pointList[$i]}"
         done
@@ -421,7 +425,8 @@ function progressFmt(){
         return 11
     fi
     local now="$(date +'%s')"
-    local durationTime=$(($now-$SCRIPT_EXEC_TIME))
+    local durationTime=$(($now-$buildBeginTimeInt))
+    local waitDurationTime=$(($buildBeginTimeInt-$SCRIPT_EXEC_TIME))
     local proportionNum="$((100000*$durationTime/$estimatedDuration))"
     if (($proportionNum > 100)) ;then
         proportionNum=99
@@ -433,7 +438,7 @@ function progressFmt(){
     if [[ "$resultTemp" == "null" ]];then
         resultTemp="ing..."
     fi
-    local strTempCurrent="[${v2}]:【${durationTime}s】【${proportionNum}％】【${resultTemp}】"
+    local strTempCurrent="[${v2}]:【Wait:${waitDurationTime}s】【Build:${durationTime}s】【${proportionNum}％】【${resultTemp}】"
     printf "${strTempCurrent}"
     if [[ "$result" == "null" ]];then
         return 0
@@ -452,6 +457,7 @@ function progressPod() {
     local v2Index=0
     declare -a progressRet=()
     declare -a progressRequest=()
+    declare -a buildBeginTimeList=()
     for v in {1..500};do
         local strTemp=""
         local strTempSuffix=""
@@ -459,6 +465,9 @@ function progressPod() {
         local tempNum="${#progressPodList[@]}"
         v2Index=0
         for v2 in ${progressPodList[@]};do
+            if [[ "${buildBeginTimeList[$v2Index]}" == "" ]];then
+                buildBeginTimeList[$v2Index]="$(date +'%s')"
+            fi
             isContinue=false
             local strTempCurrent="${progressRet[$v2Index]}"
             local execStr="${progressRequest[$v2Index]}"
@@ -477,8 +486,8 @@ function progressPod() {
                         strTempSuffix="${strTempSuffix}\033[1A"
                     fi
                 fi
-                local temp="$(eval "$execStr")"
-                strTempCurrent=$(progressFmt "$temp")
+                local runResporse="$(eval "$execStr")"
+                strTempCurrent=$(progressFmt "$runResporse" "${buildBeginTimeList[$v2Index]}")
                 statusProgressFmt="$?"
             elif $DEBUG ;then
                 if (($v2Index>0));then
@@ -496,6 +505,7 @@ function progressPod() {
                 11)
                     isContinue=true
                     isBreak=true
+                    buildBeginTimeList[$v2Index]="$(date +'%s')"
                     ;;
                 12)
                     progressRet[$v2Index]="$strTempCurrent"
