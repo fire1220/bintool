@@ -373,6 +373,7 @@ function progressPodListFun(){
 }
 
 # ret code: 
+#    0  binding
 #    11 continue
 #    12 exit
 #    13 error
