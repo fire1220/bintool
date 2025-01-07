@@ -436,7 +436,7 @@ function progressFmt(){
     fi
     resultTemp="$result"
     if [[ "$resultTemp" == "null" ]];then
-        resultTemp="ing..."
+        resultTemp="ING..."
     fi
     local strTempCurrent="[${v2}]:【Wait:${waitDurationTime}s】【Build:${durationTime}s】【${proportionNum}％】【${resultTemp}】"
     printf "${strTempCurrent}"
