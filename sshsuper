@@ -3,10 +3,10 @@
 readonly SCRIPT_NAME="${0##*/}"
 readonly CONFIG_PATH="$HOME/.config/${SCRIPT_NAME}.json"
 if [ ! -d "${CONFIG_PATH%/*}" ] ;then
-    mkdir -p "${CONFIG_PATH%/*}" 
+    mkdir -p "${CONFIG_PATH%/*}"
 fi
 if [ ! -f "${CONFIG_PATH}" ];then
-    touch "${CONFIG_PATH}" 
+    touch "${CONFIG_PATH}"
 fi
 CONFIG_DATA="$(jq '.' "${CONFIG_PATH}")" || {
     echo "$CONFIG_DATA"
@@ -37,7 +37,7 @@ function formatList(){
         local i=0
         while read -r title host;do
             ((i++))
-            printf "%-4d %-30s %-30s\n" "$i" "$title" "$host" 
+            printf "%-4d %-30s %-30s\n" "$i" "$title" "$host"
         done
     }
 }
@@ -126,7 +126,7 @@ function readBaseOption(){
     value="${row#* }"
     case "$name" in
         add)
-            addConfig  
+            addConfig
             return 20
             ;;
         set)
@@ -142,7 +142,7 @@ function readBaseOption(){
                 echo "    函数内部没有传递正确的参数"
                 return 10
             fi
-            delConfig "$(echo "$data"|awk -v id="$value" '$1==id{ print $2 }')" 
+            delConfig "$(echo "$data"|awk -v id="$value" '$1==id{ print $2 }')"
             return 20
             ;;
     esac
