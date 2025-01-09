@@ -1,0 +1,30 @@
+#!/bin/bash
+
+function main(){
+    declare -a sshArgs=()
+    local sshName=""
+    for v in "$@";do
+        longName="${v%%=*}"
+        longVal="${v#*=}"
+        if [[ "$v" =~ = ]] && [[ "$longVal" != "" ]] ;then
+            case "$longName" in
+                --name)
+                    sshName="$longVal"
+                    ;;
+                *)
+                    sshArgs[$sshArgsKey]="$v"
+                    ((sshArgsKey++))
+                    ;;
+            esac
+        else
+            sshArgs[$sshArgsKey]="$v"
+            ((sshArgsKey++))
+        fi
+    done
+    echo "$sshName"
+    echo "${sshArgs[@]}"
+}
+
+main "$@"
+
+
