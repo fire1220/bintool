@@ -1,30 +1,199 @@
 #!/bin/bash
 
-function main(){
-    declare -a sshArgs=()
-    local sshName=""
-    for v in "$@";do
-        longName="${v%%=*}"
-        longVal="${v#*=}"
-        if [[ "$v" =~ = ]] && [[ "$longVal" != "" ]] ;then
-            case "$longName" in
-                --name)
-                    sshName="$longVal"
+readonly SCRIPT_NAME="${0##*/}"
+readonly CONFIG_PATH="$HOME/.config/${SCRIPT_NAME}.json"
+if [ ! -d "${CONFIG_PATH%/*}" ] ;then
+    mkdir -p "${CONFIG_PATH%/*}" 
+fi
+if [ ! -f "${CONFIG_PATH}" ];then
+    touch "${CONFIG_PATH}" 
+fi
+CONFIG_DATA="$(jq '.' "${CONFIG_PATH}")" || {
+    echo "$CONFIG_DATA"
+    exit 1
+}
+
+function helpInfo(){
+    echo "help"
+}
+
+function formatList(){
+    search="$1"
+    if [[ "$CONFIG_DATA" == "" ]];then
+        echo "------"
+        echo "目前没有配置，需要添加配置"
+    fi
+    # local data=$(echo "$CONFIG_DATA" | jq -r '.|to_entries[]|"\(.key+1)\t\(.value.title)\t\(.value.host)"')
+    local data=$(echo "$CONFIG_DATA" | jq -r '.[]|"\(.title)\t\(.host)"')
+    local list="$data"
+    if [[ "$search" != "" ]];then
+        list=$(echo "$data" | grep "$search")
+    fi
+    cat <<!
+                        server list
+============================================================
+!
+    echo "$list" | {
+        local i=0
+        while read -r title host;do
+            ((i++))
+            printf "%-4d %-30s %-30s\n" "$i" "$title" "$host" 
+        done
+    }
+}
+
+function addConfig(){
+    declare -a list=("名称：" "主机：" "端口：" "用户名：" "密码：")
+    declare -a cfg=()
+    local searchVal
+    for v in {0..4};do
+        while read -p "${list[$v]}" row;do
+            if [[ "$row" == "" ]];then
+                echo "    ${list[$v]%：}不能为空"
+                continue
+            fi
+            if [[ "$v" == "2" ]] && [[ ! "$row" =~ ^[0-9]+$ ]];then
+                echo "    端口号必须是数字"
+                continue
+            fi
+            if [[ "$CONFIG_DATA" != "" ]];then
+                searchVal=$(echo "$CONFIG_DATA" | jq --arg row "$row" '.[]|select(.title==$row)') || {
+                    echo "jq搜索出错了"
+                    continue
+                }
+                if [[ "$searchVal" != "" ]];then
+                    echo "    改标题在配置中已经存在"
+                    continue
+                fi
+            fi
+            cfg[$v]="$row"
+            break
+        done
+    done
+    jsonFormat='{title:$title, host:$host, port:$port|tonumber, username:$user, passwd:$passwd}'
+    newJson=$(jq -n --arg title "${cfg[0]}" --arg host "${cfg[1]}" --arg port "${cfg[2]}" --arg user "${cfg[3]}" --arg passwd "${cfg[4]}" "$jsonFormat")
+
+    local data="$CONFIG_DATA"
+    if [[ "$data" == "" ]];then
+        data="[]"
+    fi
+    CONFIG_DATA=$(echo "$data" | jq --argjson newJson "$newJson" '. += [$newJson]')
+    echo "$CONFIG_DATA" > "$CONFIG_PATH"
+    if [[ "$?" == "0" ]];then
+        echo "配置添加成功"
+        echo ""
+    fi
+}
+
+function setConfig(){
+    echo "set"
+}
+
+function delConfig(){
+    title="$1"
+    if [[ "$title" == "" ]];then
+        return 1
+    fi
+    CONFIG_DATA="$(echo "$CONFIG_DATA" | jq --arg title "$title" '.[]|select(.title != $title)'|jq -s |jq '.')"
+    echo "$CONFIG_DATA" > "$CONFIG_PATH"
+    if [[ "$?" == "0" ]];then
+        echo "配置修改成功"
+        echo ""
+    fi
+}
+
+function execSSH(){
+    local title="$1"
+    if [[ "$title" == "" ]];then
+        return 1
+    fi
+    eval "$(echo "$CONFIG_DATA" | jq -r --arg title "$title" '.[]|select(.title == $title)|to_entries[]|"declare \(.key)=\"\(.value)\""')"
+    sshpass -p "$passwd" ssh "${username}@${host}" -p $port -o "StrictHostKeyChecking no" -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedKeyTypes=+ssh-rsa
+    return "$?"
+}
+
+function readBaseOption(){
+    local row="$1"
+    local data="$2"
+    if [[ "$row" == "exit" ]];then
+        return 10
+    fi
+    if [[ ! "$row" =~ ^: ]];then
+        return 0
+    fi
+    row="${row#:}"
+    name="${row%% *}"
+    value="${row#* }"
+    case "$name" in
+        add)
+            addConfig  
+            return 20
+            ;;
+        set)
+            setConfig "$value"
+            return 20
+            ;;
+        del)
+            if [[ "$value" == "" ]] || [[ ! "$row" =~ [[:space:]] ]] ;then
+                echo "    没有要删除的id"
+                continue
+            fi
+            if [[ "$data" == "" ]];then
+                echo "    函数内部没有传递正确的参数"
+                return 10
+            fi
+            delConfig "$(echo "$data"|awk -v id="$value" '$1==id{ print $2 }')" 
+            return 20
+            ;;
+    esac
+    return 0
+}
+
+function serverList(){
+    local list="$(formatList)" && echo "$list"
+    local comment="select num:"
+    if [[ "$CONFIG_DATA" == "" ]];then
+        comment="请输入："
+    fi
+    while read -p "$comment" row ;do
+        readBaseOption "$row" "$list" || {
+            local returnCode="$?"
+            echo "$returnCode"
+            case "$returnCode" in
+                10)
+                    break
                     ;;
-                *)
-                    sshArgs[$sshArgsKey]="$v"
-                    ((sshArgsKey++))
+                20)
+                    comment="select num:"
+                    list="$(formatList)" && echo "$list"
+                    continue
                     ;;
             esac
-        else
-            sshArgs[$sshArgsKey]="$v"
-            ((sshArgsKey++))
-        fi
+        }
+        [[ "$row" =~ ^[0-9]+$ ]] && {
+            local title="$(echo "$list"|awk -v row="$row" '$1==row{ print $2 }')"
+            execSSH "$title" || {
+                return 1
+            }
+            break
+        }
+        list="$(formatList "$row")" && echo "$list"
     done
-    echo "$sshName"
-    echo "${sshArgs[@]}"
+}
+
+function main(){
+    type jq &>1 > /dev/null || {
+        cat <<!
+        缺少jq命令
+        安装方法：
+            MacOS : brew install jq
+            Linux : yum install jq
+            Ubuntu: apt install jq
+!
+    return 1
+    }
+    serverList
 }
 
 main "$@"
-
 
