@@ -15,6 +15,21 @@ function main(){
     local header=$(echo $headerBase64 | base64 --decode)
     local payload=$(echo $payloadBase64 | base64 --decode)
 
+    type jq 2>/dev/null || {
+        cat <<!
+        安装jq命令体验更好
+        安装方法：
+            MacOS : brew install jq
+            Linux : yum install jq
+            Ubuntu: apt install jq
+
+!
+        echo "Header: " 
+        echo "$header"
+        echo "Payload: "
+        echo "$payload"
+        return 0
+    }
     echo "Header: " 
     echo "$header" | jq '.' 2>/dev/null || {
         echo "$header"
