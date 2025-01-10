@@ -261,16 +261,26 @@ function serverList(){
 }
 
 function main(){
-    type jq &>1 > /dev/null || {
-        cat <<!
-        缺少jq命令
-        安装方法：
-            MacOS : brew install jq
-            Linux : yum install jq
-            Ubuntu: apt install jq
+    declare -a commandList=("jq" "sshpass")
+    for v in "${commandList[@]}";do
+        type "$v" &>1 > /dev/null || {
+            cat <<!
+            缺少 ${v} 命令
+            安装方法：
+                MacOS : brew install $v
+                Linux : yum install $v
+                Ubuntu: apt install $v
 !
-    return 1
+            if [[ "$v" == "sshpass" ]];then
+                cat <<!
+            源码安装
+                地址：https://github.com/kevinburke/sshpass
+                执行：./configure && make && make install
+!
+            fi
+        return 1
     }
+    done
     serverList
 }
 
