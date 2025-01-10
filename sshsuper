@@ -18,28 +18,66 @@ function helpInfo(){
 }
 
 function formatList(){
-    search="$1"
+    local search="$1"
+    declare isOnlyData=false
+    if [[ "$2" == "true" ]];then
+        isOnlyData=true
+    fi
     if [[ "$CONFIG_DATA" == "" ]];then
         echo "------"
         echo "目前没有配置，需要添加配置"
     fi
-    # local data=$(echo "$CONFIG_DATA" | jq -r '.|to_entries[]|"\(.key+1)\t\(.value.title)\t\(.value.host)"')
     local data=$(echo "$CONFIG_DATA" | jq -r '.[]|"\(.title)\t\(.host)"')
     local list="$data"
     if [[ "$search" != "" ]];then
         list=$(echo "$data" | grep "$search")
     fi
-    cat <<!
-                        server list
-============================================================
-!
-    echo "$list" | {
-        local i=0
-        while read -r title host;do
-            ((i++))
-            printf "%-4d %-30s %-30s\n" "$i" "$title" "$host"
+    local dataList=""
+    declare -i maxLineNum=0
+    if [[ "$list" != "" ]];then
+        {
+            local i=0
+            while read -r title host;do
+                ((i++))
+                local num=${#title}
+                local titleWidth=30
+                declare -i currentLineNum=0
+                for (( j=0; j<$num; j++ ));do
+                    if [[ ! "${title:$j:1}" =~ [[:alnum:][:punct:]] ]];then
+                        ((currentLineNum++))
+                        ((titleWidth++))
+                    fi
+                done
+                rowData="$(printf "%-4d%-${titleWidth}s %-30s" "$i" "$title" "$host")"
+                currentLineNum=$((${#rowData}+$currentLineNum))
+                if ((${currentLineNum}>$maxLineNum));then
+                    maxLineNum=${currentLineNum}
+                fi
+                dataList="${dataList}${rowData}\n"
+            done
+        } <<< "$list"
+        dataList="$(echo -e "$dataList")"
+    fi
+    serverListTitle="                   server list"
+    splitLine="=================================================="
+    if (($maxLineNum > 50));then
+        tempFirstLineNum=$(($maxLineNum - 50))
+        for ((j=0;j<$tempFirstLineNum;j++));do
+            if (($j%2==0));then
+                serverListTitle=" ${serverListTitle}"
+            fi
+            splitLine="${splitLine}="
         done
-    }
+    fi
+    if $isOnlyData ;then
+        echo "${dataList}"
+    else
+        cat <<!
+${serverListTitle}
+${splitLine}
+${dataList}
+!
+    fi
 }
 
 function addConfig(){
@@ -176,6 +214,23 @@ function serverList(){
                 return 1
             }
             break
+        }
+        [[ "$row" == "" ]] && {
+            declare -i numLine=0
+            {
+                while read -r id title host;do
+                    if [[ "$id" =~ ^[0-9]+$ ]];then
+                        ((numLine++))
+                    fi
+                done
+            } <<< "$list"
+            (( $numLine == 1 )) && {
+                local title="$(echo "$list"|awk -v row="$numLine" '$1==row{ print $2 }')"
+                execSSH "$title" || {
+                    return 1
+                }
+                break
+            }
         }
         list="$(formatList "$row")" && echo "$list"
     done
