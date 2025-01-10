@@ -261,7 +261,7 @@ function serverList(){
 }
 
 function main(){
-    declare -a commandList=("jq" "sshpass")
+    declare -a commandList=("jq1" "sshpass1")
     for v in "${commandList[@]}";do
         type "$v" &>1 > /dev/null || {
             cat <<!
@@ -271,7 +271,7 @@ function main(){
                 Linux : yum install $v
                 Ubuntu: apt install $v
 !
-            if [[ "$v" == "sshpass" ]];then
+            if [[ "$v" == "sshpass1" ]];then
                 cat <<!
             源码安装
                 地址：https://github.com/kevinburke/sshpass
