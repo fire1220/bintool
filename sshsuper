@@ -261,26 +261,31 @@ function serverList(){
 }
 
 function main(){
-    declare -a commandList=("jq1" "sshpass1")
+    declare -a commandList=("jq" "sshpass")
+    declare isError=false
     for v in "${commandList[@]}";do
         type "$v" &>1 > /dev/null || {
             cat <<!
-            缺少 ${v} 命令
+          $(echo -e "\033[31;1m➜\033[0m") 缺少 ${v} 命令
             安装方法：
                 MacOS : brew install $v
                 Linux : yum install $v
                 Ubuntu: apt install $v
 !
-            if [[ "$v" == "sshpass1" ]];then
+            if [[ "$v" == "sshpass" ]];then
                 cat <<!
             源码安装
                 地址：https://github.com/kevinburke/sshpass
                 执行：./configure && make && make install
 !
             fi
-        return 1
+        echo ""
+        isError=true
     }
     done
+    if $isError ;then
+        return 1
+    fi
     serverList
 }
 
