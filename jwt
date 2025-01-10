@@ -24,7 +24,7 @@ function main(){
             Ubuntu: apt install jq
 
 !
-        echo "Header: " 
+        echo "Header: "
         echo "$header"
         echo "Payload: "
         echo "$payload"
