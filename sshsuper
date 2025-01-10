@@ -14,7 +14,15 @@ CONFIG_DATA="$(jq '.' "${CONFIG_PATH}")" || {
 }
 
 function helpInfo(){
-    echo "help"
+    cat <<!
+    常用指令：
+        :add            添加ssh配置
+        :del 数字索引   删除id对应的配置
+        非数字索引      搜索列表
+        数字索引        进入该数字id对应的ssh
+
+!
+    return 0
 }
 
 function formatList(){
@@ -261,6 +269,25 @@ function serverList(){
 }
 
 function main(){
+    OPTIND=0
+    while getopts ':-:h' opt;do
+        case "$opt" in
+            h)
+                helpInfo
+                return 0
+                ;;
+            -)
+                longName="${OPTARG%%=*}"
+                case "$longName" in
+                    help)
+                        helpInfo
+                        return 0
+                        ;;
+                esac
+                ;;
+        esac
+    done
+    shift $(($OPTIND-1))
     declare -a commandList=("jq" "sshpass")
     declare isError=false
     for v in "${commandList[@]}";do
@@ -286,6 +313,7 @@ function main(){
     if $isError ;then
         return 1
     fi
+    helpInfo
     serverList
 }
 
