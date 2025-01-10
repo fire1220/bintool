@@ -189,11 +189,16 @@ function readBaseOption(){
 
 function serverList(){
     local list="$(formatList)" && echo "$list"
+    local count=$(($(formatList "" true|wc -l)))
     local comment="select num:"
+    if (($count > 0));then
+        comment="select num[1-$count]:"
+    fi
     if [[ "$CONFIG_DATA" == "" ]];then
         comment="请输入："
     fi
     while read -p "$comment" row ;do
+        declare -i numLine=0
         readBaseOption "$row" "$list" || {
             local returnCode="$?"
             echo "$returnCode"
@@ -202,14 +207,18 @@ function serverList(){
                     break
                     ;;
                 20)
+                    numLine=$(($(formatList "" true|wc -l)))
                     comment="select num:"
+                    if (($numLine > 0));then
+                        comment="select num[1-$numLine]:"
+                    fi
                     list="$(formatList)" && echo "$list"
                     continue
                     ;;
             esac
         }
-        declare -i numLine=0
         {
+            numLine=0
             while read -r id title host;do
                 if [[ "$id" =~ ^[0-9]+$ ]];then
                     ((numLine++))
@@ -218,7 +227,6 @@ function serverList(){
         } <<< "$list"
         [[ "$row" =~ ^[0-9]+$ ]] && {
             if (($numLine < $row));then
-                comment="select num[0-${numLine}]:"
                 continue
             fi
             local title="$(echo "$list"|awk -v row="$row" '$1==row{ print $2 }')"
@@ -237,6 +245,18 @@ function serverList(){
             }
         }
         list="$(formatList "$row")" && echo "$list"
+        {
+            numLine=0
+            while read id title host;do
+                if [[ "$id" =~ ^[0-9]+$ ]];then
+                    ((numLine++))
+                fi
+            done
+        } <<< "$list"
+        comment="select num:"
+        if (($numLine > 0));then
+            comment="select num[1-$numLine]:"
+        fi
     done
 }
 
