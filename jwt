@@ -1,0 +1,29 @@
+#!/bin/bash
+
+function main(){
+    local jwt="$1"
+    if [[ "jwt" == "" ]];then
+        echo 缺少jwt参数
+    fi
+    local headerBase64=$(echo $jwt | cut -d '.' -f 1)
+    local payloadBase64=$(echo $jwt | cut -d '.' -f 2)
+
+    # 修正 Base64 URL 编码
+    # 如果字符串长度不是 4 的倍数，添加必要的 = 作为填充，以确保 Base64 编码的标准长度。 
+    local payloadBase64=$(echo $payloadBase64 | tr '_-' '/+' | sed 's/\([0-9A-Za-z]\{4\}\)$/\1=/')
+
+    local header=$(echo $headerBase64 | base64 --decode)
+    local payload=$(echo $payloadBase64 | base64 --decode)
+
+    echo "Header: " 
+    echo "$header" | jq '.' 2>/dev/null || {
+        echo "$header"
+    }
+    echo "Payload: "
+    echo "$payload" | jq '.' 2>/dev/null || {
+        echo "$payload"
+    }
+}
+
+main "$@"
+
