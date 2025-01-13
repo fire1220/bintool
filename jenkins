@@ -46,6 +46,7 @@ fi
 function helpInit(){
     cat <<!
         command [-cd] commitId
+            构建jenkins或查看已经构建的信息
 
         第一次执行会自动生成一个配置文件:
             1.配置文件路径："$CONFIG_PATH"
@@ -53,7 +54,8 @@ function helpInit(){
 
         参数：
             -h / --help                     帮助
-            -c / commitid  commit_id        commitId(默认选项)
+            -c / commitid  commit_id        构建Jenkins，commitId(默认选项)
+            --xxx=xxx                       构建jenkins时自定义传入参数，例如--restart=restart-0260
             -d / details   [build_number]   查看发布详情
                                                 如果不传入[build_number]则会选择pod的最新发布的详情，等同于-l
                                                 参数格式：buildNumber 或 jobName/buildNumber
@@ -87,6 +89,9 @@ declare -r CURL_SCRIPT_LAST_BUILD_NUMBER="${CURL_SCRIPT_LAST_BUILD} | jq '.numbe
 
 # 在配置列表中获取pod name
 declare READ_CONFIG_JOB_NAME=""
+
+
+declare -a ParamList=()
 
 function main(){
     local mainParam=""
@@ -137,6 +142,9 @@ function main(){
                             echo "param --${longArgKey} 的值不正确，值应该是空或者true"
                             exit 1
                         fi
+                        ;;
+                    *)
+                        ParamList+=("$OPTARG")
                         ;;
                 esac
                 ;;
@@ -319,6 +327,12 @@ function buildAndProgress(){
             continue
         fi
         params="${params} --form '${paramKey}=\"${commitId}\"'"
+    done
+
+    for v in "${ParamList[@]}";do
+        local paramKey="${v%%=*}"
+        local paramVal="${v#*=}"
+        params="${params} --form '${paramKey}=\"${paramVal}\"'"
     done
 
     local podList=()
