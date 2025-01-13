@@ -1,44 +1,44 @@
 #!/bin/bash
 
-commandName="${0##*/}"
+declare -r COMMAND_NAME="${0##*/}"
 
 function helpInfo(){
     cat <<!
-        command:$commandName
-            $commandName [-nj] [--jenkins] "commitInfo"
+        command:$COMMAND_NAME
+            $COMMAND_NAME [-nj] [--jenkins] "CommitInfo"
 
         参数：
             -s / --self         只提交到当前分支，不进行切换分支
             -j / --jenkins      把commit_id作为参数,传递给jenkins命令
             --jenkins-xxx=xxx   把xxx=xxx作为参数,传递给jenkins命令,例如：--jenkins-restart=restart-0259
-            commitInfo          提交的git commit 信息
+            CommitInfo          提交的git commit 信息
 
         说明：
-            会把git的"当前分支"合并到"${commandName}"开发分支
+            会把git的"当前分支"合并到"${COMMAND_NAME}"开发分支
             如果想变更要合并的开发分支，修改脚本名称即可
         
         example:
-            $commandName "提交并且合并到${commandName}分支"
-            $commandName -n "只提交到当前分支"
+            $COMMAND_NAME "提交并且合并到${COMMAND_NAME}分支"
+            $COMMAND_NAME -n "只提交到当前分支"
 
 !
     exit 0
 }
 
-isPostJenkins=false
-isNoCheckout=false
+declare IsPostJenkins=false
+declare IsNoCheckout=false
 declare -a JenkinsParams=()
 OPTIND=1
 while getopts ":-:jsh" opt;do
     case "$opt" in
         s)
-            isNoCheckout=true
+            IsNoCheckout=true
             ;;
         h)
             helpInfo
             ;;
         j)
-            isPostJenkins=true
+            IsPostJenkins=true
             ;;
         -)
             argKeyLong=${OPTARG%%=*}
@@ -57,10 +57,10 @@ while getopts ":-:jsh" opt;do
                         helpInfo
                         ;;
                     "jenkins")
-                        isPostJenkins=true
+                        IsPostJenkins=true
                         ;;
                     "self")
-                        isNoCheckout=true
+                        IsNoCheckout=true
                         ;;
                     *)
                         if [[ "$argKeyLong" =~ ^jenkins- ]];then
@@ -75,10 +75,10 @@ while getopts ":-:jsh" opt;do
 done
 shift $(($OPTIND-1))
 
-readonly developmentBranch="$commandName"
+readonly -r DEVELOPMENT_BRANCH="$COMMAND_NAME"
 
-commitInfo="$1"
-if [[ "$commitInfo" == "" ]];then
+declare -r COMMIT_INFO="$1"
+if [[ "$COMMIT_INFO" == "" ]];then
     echo "input commit info"
     exit 1
 fi
@@ -129,7 +129,7 @@ function main(){
         fi
         return $tempCode
     }
-    if [[ "$currentBranchName" == "$developmentBranch" ]];then
+    if [[ "$currentBranchName" == "$DEVELOPMENT_BRANCH" ]];then
         echo "current is target development branch"
         return 1
     fi
@@ -137,21 +137,21 @@ function main(){
     execList=(
         "git --no-pager diff"
         "git add -A"
-        "git commit -m '$commitInfo'"
+        "git commit -m '$COMMIT_INFO'"
         "git pull"
         "git push"
-        "git checkout $developmentBranch"
+        "git checkout $DEVELOPMENT_BRANCH"
         "git pull"
-        "git merge $currentBranchName -m 'Merge branch $currentBranchName into $developmentBranch'"
+        "git merge $currentBranchName -m 'Merge branch $currentBranchName into $DEVELOPMENT_BRANCH'"
         "git push"
         "git --no-pager log --no-color -n 1"
         "git checkout $currentBranchName"
     );
-    if $isNoCheckout ;then
+    if $IsNoCheckout ;then
         execList=(
             "git --no-pager diff"
             "git add -A"
-            "git commit -m '$commitInfo'"
+            "git commit -m '$COMMIT_INFO'"
             "git pull"
             "git push"
         );
@@ -191,7 +191,7 @@ function main(){
                 elif [[ "$row" == "p" || "$row" == "P" ]];then
                     local conflictExecList=(
                         "git add -A"
-                        "git commit -m 'resolve the conflict：$commitInfo'"
+                        "git commit -m 'resolve the conflict：$COMMIT_INFO'"
                         "git pull"
                         "git push"
                     )
@@ -210,7 +210,7 @@ function main(){
             done
         }
     done
-    if $isPostJenkins ;then
+    if $IsPostJenkins ;then
         if [[ "$commitId" != "" ]];then
             currentBranchNameTemp=$(git_current_branch) || {
                 return 1
