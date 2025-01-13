@@ -222,7 +222,7 @@ function main(){
             done
             local evalStr="jenkins \"$commitId\""
             if [[ "$params" != "" ]];then
-                evalStr="jenkins ${params} \"$commitId\""
+                evalStr="jenkins${params} \"$commitId\""
             fi
             echo  -e "${commandPrefix}\033[33m${evalStr}\033[0m"
             eval "$evalStr"
