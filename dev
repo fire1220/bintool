@@ -75,7 +75,7 @@ while getopts ":-:jsh" opt;do
 done
 shift $(($OPTIND-1))
 
-readonly -r DEVELOPMENT_BRANCH="$COMMAND_NAME"
+readonly DevelopmentBranch="$COMMAND_NAME"
 
 declare -r COMMIT_INFO="$1"
 if [[ "$COMMIT_INFO" == "" ]];then
@@ -129,7 +129,7 @@ function main(){
         fi
         return $tempCode
     }
-    if [[ "$currentBranchName" == "$DEVELOPMENT_BRANCH" ]];then
+    if [[ "$currentBranchName" == "$DevelopmentBranch" ]];then
         echo "current is target development branch"
         return 1
     fi
@@ -140,9 +140,9 @@ function main(){
         "git commit -m '$COMMIT_INFO'"
         "git pull"
         "git push"
-        "git checkout $DEVELOPMENT_BRANCH"
+        "git checkout $DevelopmentBranch"
         "git pull"
-        "git merge $currentBranchName -m 'Merge branch $currentBranchName into $DEVELOPMENT_BRANCH'"
+        "git merge $currentBranchName -m 'Merge branch $currentBranchName into $DevelopmentBranch'"
         "git push"
         "git --no-pager log --no-color -n 1"
         "git checkout $currentBranchName"
