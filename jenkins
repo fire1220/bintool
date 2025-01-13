@@ -448,11 +448,13 @@ function progressFmt(){
     if [[ "$result" == "SUCCESS" ]];then
         proportionNum=100
     fi
-    resultTemp="$result"
+    declare resultTemp="$result"
+    declare bingingEmoji=""
     if [[ "$resultTemp" == "null" ]];then
-        resultTemp="Building⏳"
+        resultTemp="Building"
+        bingingEmoji="⏳"
     fi
-    local strTempCurrent="[${v2}]:【Wait:${waitDurationTime}s】【Build:${durationTime}s】【${proportionNum}％】【${resultTemp}】"
+    local strTempCurrent="[${v2}]:【Wait:${waitDurationTime}s】【Build:${durationTime}s】【${proportionNum}％】【${resultTemp}】$bingingEmoji"
     printf "${strTempCurrent}"
     if [[ "$result" == "null" ]];then
         return 0
@@ -544,7 +546,12 @@ function progressPod() {
                 break
             fi
         done
-        printf "\r${strTemp}${strTempSuffix}"
+        # printf "\r${strTemp}${strTempSuffix}"
+        # printf "\r"
+        # printf "%-100s" "${strTemp}"
+        # printf "${strTempSuffix}"
+        printf "\r\033[2K${strTemp}${strTempSuffix}"
+
         if [[ "${#progressPodList[@]}" == "${#progressRet[@]}" ]];then
             break
         fi
