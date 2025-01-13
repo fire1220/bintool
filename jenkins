@@ -387,7 +387,7 @@ function progressPodListFun(){
 }
 
 # ret code: 
-#    0  binding
+#    0  building
 #    11 continue
 #    12 exit
 #    13 error
@@ -450,7 +450,7 @@ function progressFmt(){
     fi
     resultTemp="$result"
     if [[ "$resultTemp" == "null" ]];then
-        resultTemp="Building"
+        resultTemp="Building⏳"
     fi
     local strTempCurrent="[${v2}]:【Wait:${waitDurationTime}s】【Build:${durationTime}s】【${proportionNum}％】【${resultTemp}】"
     printf "${strTempCurrent}"
