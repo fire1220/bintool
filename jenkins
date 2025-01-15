@@ -622,8 +622,12 @@ function progressPod() {
             fi
         done
         IFS=$'\n' read -d '' -ra rowList <<< "$(echo -e $strTemp)"
+        local skipLineNumberTemp=""
+        if (($skipLineNumber>0));then
+            skipLineNumberTemp="\033[${skipLineNumber}A"
+        fi
+        printf "${skipLineNumberTemp}\r\033[2K${strTemp}"
         skipLineNumber=$((${#rowList[@]} - 1))
-        printf "\r\033[2K${strTemp}\033[${skipLineNumber}A"
 
         if [[ "${#progressPodList[@]}" == "${#progressRet[@]}" ]];then
             break
@@ -638,7 +642,7 @@ function progressPod() {
         fi
         sleep 2
     done
-    printf "\033[${skipLineNumber}B\n"
+    echo ""
     return 0
 }
 
