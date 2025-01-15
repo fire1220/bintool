@@ -87,10 +87,10 @@ fi
 
 # /job/k8s-test-go-wm-light-practice-2/409/wfapi/describe/api/json
 
-declare -r CURL_SCRIPT_BUILD="curl -i -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/buildWithParameters' %s"
-declare -r CURL_SCRIPT_LAST_BUILD="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/lastBuild/api/json?pretty=true'"
-declare -r CURL_SCRIPT_DETAILS="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/api/json?pretty=true'"
-declare -r CURL_SCRIPT_QUEUE_ITEM="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '%s' | jq '{task:.task, executable:.executable}'"
+declare -r CURL_SCRIPT_BUILD="curl -i -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/buildWithParameters' %s"                # 构建
+declare -r CURL_SCRIPT_LAST_BUILD="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/lastBuild/api/json?pretty=true'"      # 获取最近构建的详情
+declare -r CURL_SCRIPT_DETAILS="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/api/json?pretty=true'"                   # 获取构建的详情
+declare -r CURL_SCRIPT_QUEUE_ITEM="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '%s' | jq '{task:.task, executable:.executable}'"    # 获取发布状态，只有发布时才可用，该地址是构建成功201后header头里的Location
 
 declare -r CURL_SCRIPT_LAST_BUILD_NUMBER="${CURL_SCRIPT_LAST_BUILD} | jq '.number'"
 
