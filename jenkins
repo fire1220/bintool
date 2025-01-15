@@ -626,10 +626,6 @@ function progressPod() {
                 break
             fi
         done
-        # printf "\r${strTemp}${strTempSuffix}"
-        # printf "\r"
-        # printf "%-100s" "${strTemp}"
-        # printf "${strTempSuffix}"
         printf "\r\033[2K${strTemp}${strTempSuffix}"
 
         if [[ "${#progressPodList[@]}" == "${#progressRet[@]}" ]];then
