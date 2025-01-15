@@ -482,9 +482,9 @@ function progressFmt(){
     fi
     if (($timestamp < $SCRIPT_EXEC_TIME));then
         if $DEBUG ;then
-            printf "\r正在获取中(jenkinsTimestamp:${timestamp};scriptExecTime:${SCRIPT_EXEC_TIME})%s" "$(loadingStr "$idx")"
+            printf "正在获取中(jenkinsTimestamp:${timestamp};scriptExecTime:${SCRIPT_EXEC_TIME})%s" "$(loadingStr "$idx")"
         else
-            printf "\r正在获取中%s" "$(loadingStr "$idx")"
+            printf "正在获取中%s" "$(loadingStr "$idx")"
         fi
         return 11
     fi
@@ -574,7 +574,7 @@ function progressPod() {
                     if [[ "$strTemp" == "" ]];then
                         strTemp="${execStr}"
                     else
-                        strTemp="${strTemp}\n${execStr}"
+                        strTemp="${strTemp}\n\033[2K${execStr}"
                     fi
                 fi
                 local runResporse="$(eval "$execStr")"
@@ -584,7 +584,7 @@ function progressPod() {
                 if [[ "$strTemp" == "" ]];then
                     strTemp="${execStr}"
                 else
-                    strTemp="${strTemp}\n${execStr}"
+                    strTemp="${strTemp}\n\033[2K${execStr}"
                 fi
             fi
             local isBreak=false
@@ -613,7 +613,7 @@ function progressPod() {
                 break
             fi
         done
-        read -d '' -ra rowList <<< "$(echo -e $strTemp)"
+        IFS=$'\n' read -d '' -ra rowList <<< "$(echo -e $strTemp)"
         skipLineNumber=$((${#rowList[@]} - 1))
         printf "\r\033[2K${strTemp}\033[${skipLineNumber}A"
 
