@@ -39,6 +39,8 @@ declare -r DIR_NAME="$(basename "$(pwd)")"
 
 declare -r SCRIPT_EXEC_TIME="$(date +'%s')"
 
+declare -r IS_LAST_GET_NUMBER=false
+
 if [[ "$DEBUG" != "true" ]] || [[ "$DEBUG" != "false" ]];then
     DEBUG=false
 fi
@@ -81,9 +83,11 @@ fi
 . "$CONFIG_PATH"
 
 
-declare -r CURL_SCRIPT_BUILD="curl -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/buildWithParameters' %s"
+# declare -r CURL_SCRIPT_BUILD="curl -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/buildWithParameters' %s"
+declare -r CURL_SCRIPT_BUILD="curl -i -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/buildWithParameters' %s"
 declare -r CURL_SCRIPT_LAST_BUILD="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/lastBuild/api/json?pretty=true'"
 declare -r CURL_SCRIPT_DETAILS="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/api/json?pretty=true'"
+declare -r CURL_SCRIPT_QUEUE_ITEM="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '%s' | jq '{task:.task, executable:.executable}'"
 
 declare -r CURL_SCRIPT_LAST_BUILD_NUMBER="${CURL_SCRIPT_LAST_BUILD} | jq '.number'"
 
@@ -337,6 +341,7 @@ function buildAndProgress(){
 
     local podList=()
     local execStr=""
+    local locationUrlList=()
     for v in "${POD_NAME_LIST[@]}";do
         local name="${v%%=*}"
         local podName="${v#*=}"
@@ -347,10 +352,23 @@ function buildAndProgress(){
         if $DEBUG ;then
             echo "$execStr"
         fi
-        eval "$execStr" || {
+        local headerInfo=""
+        headerInfo="$(eval "$execStr")" || {
             echo -e "\033[31m【${podName} build error】\033[0m"
             continue
         }
+        if [[ "$headerInfo" != "" ]];then
+            local locationUrl=""
+            while read -r row;do
+                if [[ "$row" =~ ^Location: ]];then
+                    locationUrl="${row#Location: }api/json"
+                    break
+                fi
+            done <<< "$(echo $headerInfo | tr '\r' '\n')"
+            if [[ "$locationUrl" != "" ]];then
+                locationUrlList+=("$locationUrl")
+            fi
+        fi
         podList+=("${podName}")
     done
     if [[ "$execStr" == "" ]];then
@@ -363,7 +381,11 @@ function buildAndProgress(){
     fi
     local sttyBak=$(stty -g)
     stty -echo -icanon
-    progressPod "${podList[@]}"
+    if $IS_LAST_GET_NUMBER ;then
+        progressPod "${podList[@]}"
+    else
+        progressPod "${locationUrlList[@]}"
+    fi
     read -t 1 -r row
     stty "$sttyBak"
     exit 0
@@ -387,19 +409,31 @@ function progressPodListLastFun(){
 }
 
 function progressPodListFun(){
-    local podList="$@"
+    if $IS_LAST_GET_NUMBER ;then
+        progressPodListLastFun "$@"
+        return 0
+    fi
+    local getPodCurlScriptList="$@"
     if [[ "$podList" == "" ]];then
         return 0
     fi
     local progressPodList=()
-    local progressIndex=0
-    for v in ${podList[@]};do
-        local execStr=$(printf "$CURL_SCRIPT_LAST_BUILD_NUMBER" "${v}")
-        local buildNumber="$(eval "$execStr")"
-        progressPodList[$progressIndex]="${v}/${buildNumber}"
-        progressIndex=$(($progressIndex+1))
+    for v in ${getPodCurlScriptList[@]};do
+        local execStr="$(printf "$CURL_SCRIPT_QUEUE_ITEM" "$v")"
+        local execCurl="$(eval "$execStr")"
+        executableNumber="$(echo "$execCurl" | jq '.executable.number')"
+        for v in {0..60};do
+            if [[ "$executableNumber" != "" ]] && [[ "$executableNumber" != "null" ]];then
+                break
+            fi
+            sleep 1
+            execCurl="$(eval "$execStr")"
+            executableNumber="$(echo "$execCurl" | jq '.executable.number')"
+        done
+        buildNumberAndPod="$(echo "$execCurl" | jq -r '.task.name+"/"+(.executable.number|tostring)')"
+        progressPodList+=("${buildNumberAndPod}")
     done
-    echo ${progressPodList[@]}
+    echo "${progressPodList[@]}"
 }
 
 # ret code: 
