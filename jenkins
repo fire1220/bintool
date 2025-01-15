@@ -85,7 +85,8 @@ fi
 . "$CONFIG_PATH"
 
 
-# declare -r CURL_SCRIPT_BUILD="curl -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/buildWithParameters' %s"
+# /job/k8s-test-go-wm-light-practice-2/409/wfapi/describe/api/json
+
 declare -r CURL_SCRIPT_BUILD="curl -i -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/buildWithParameters' %s"
 declare -r CURL_SCRIPT_LAST_BUILD="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/lastBuild/api/json?pretty=true'"
 declare -r CURL_SCRIPT_DETAILS="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/api/json?pretty=true'"
