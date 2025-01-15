@@ -39,6 +39,8 @@ declare -r DIR_NAME="$(basename "$(pwd)")"
 
 declare -r SCRIPT_EXEC_TIME="$(date +'%s')"
 
+# 是:采用获取最后一个发布数据，如果最后一个发布数据不是最新的，则重复尝试
+# 否:采用轮询build返回的header的Location地址
 declare -r IS_LAST_GET_NUMBER=false
 
 if [[ "$DEBUG" != "true" ]] || [[ "$DEBUG" != "false" ]];then
