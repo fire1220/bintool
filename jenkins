@@ -564,7 +564,7 @@ function progressPod() {
                     executableNumber="$(echo "$execCurl" | jq '.executable.number')"
                     podAndNumber="$(echo "$execCurl" | jq -r '.task.name+"/"+(.executable.number|tostring)')"
                     if [[ "$executableNumber" == "" ]] || [[ "$executableNumber" == "null" ]];then
-                        strTempCurrent="$(printf "\r【%s】正在获取中%s" "$podAndNumber" "$(loadingStr "$v")")"
+                        strTempCurrent="$(printf "【%s】正在获取中%s" "$podAndNumber" "$(loadingStr "$v")")"
                         buildBeginTimeList[$v2Index]="$(date +'%s')"
                     else
                         podAndNumberList[$v2Index]="$podAndNumber"
