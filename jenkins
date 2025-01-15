@@ -535,14 +535,15 @@ function progressPod() {
     else
         progressPodList=("$@")
     fi
-    local endStr=""
+    # local endStr=""
     local v2Index=0
     declare -a progressRet=()
     declare -a progressRequest=()
     declare -a buildBeginTimeList=()
+    declare skipLineNumber=0
     for v in {1..500};do
         local strTemp=""
-        local strTempSuffix=""
+        # local strTempSuffix=""
         local isContinue=false
         v2Index=0
         for v2 in ${progressPodList[@]};do
@@ -572,28 +573,28 @@ function progressPod() {
                 execStr=$(printf "$CURL_SCRIPT_DETAILS" "${podAndNumber}")
                 if $DEBUG ;then
                     progressRequest[$v2Index]="$execStr"
-                    if (($v2Index>0));then
-                        endStr="${endStr}\033[1B"
-                    fi
+                    # if (($v2Index>0));then
+                    #     endStr="${endStr}\033[1B"
+                    # fi
                     if [[ "$strTemp" == "" ]];then
                         strTemp="${execStr}"
                     else
                         strTemp="${strTemp}\n${execStr}"
-                        strTempSuffix="${strTempSuffix}\033[1A"
+                        # strTempSuffix="${strTempSuffix}\033[1A"
                     fi
                 fi
                 local runResporse="$(eval "$execStr")"
                 strTempCurrent=$(progressFmt "$runResporse" "${buildBeginTimeList[$v2Index]}" "${podAndNumber}" "$v")
                 statusProgressFmt="$?"
             elif $DEBUG ;then
-                if (($v2Index>0));then
-                    endStr="${endStr}\033[1B"
-                fi
+                # if (($v2Index>0));then
+                #     endStr="${endStr}\033[1B"
+                # fi
                 if [[ "$strTemp" == "" ]];then
                     strTemp="${execStr}"
                 else
                     strTemp="${strTemp}\n${execStr}"
-                    strTempSuffix="${strTempSuffix}\033[1A"
+                    # strTempSuffix="${strTempSuffix}\033[1A"
                 fi
             fi
             local isBreak=false
@@ -612,21 +613,24 @@ function progressPod() {
                 *)
                     ;;
             esac
-            if (($v2Index>0));then
-                endStr="${endStr} \033[1B"
-            fi
+            # if (($v2Index>0));then
+            #     endStr="${endStr} \033[1B"
+            # fi
             v2Index=$(($v2Index+1))
             if [[ "$strTemp" == "" ]];then
                 strTemp="${strTempCurrent}"
             else
-                strTemp="${strTemp}\n${strTempCurrent}"
-                strTempSuffix="\033[1A${strTempSuffix}"
+                strTemp="${strTemp}\n\033[2K${strTempCurrent}"
+                # strTempSuffix="\033[1A${strTempSuffix}"
             fi
             if $isBreak ;then
                 break
             fi
         done
-        printf "\r\033[2K${strTemp}${strTempSuffix}"
+        # printf "\r\033[2K${strTemp}${strTempSuffix}"
+        read -d '' -ra rowList <<< "$(echo -e $strTemp)"
+        skipLineNumber=$((${#rowList[@]} - 1))
+        printf "\r\033[2K${strTemp}\033[${skipLineNumber}A"
 
         if [[ "${#progressPodList[@]}" == "${#progressRet[@]}" ]];then
             break
@@ -641,7 +645,8 @@ function progressPod() {
         fi
         sleep 2
     done
-    printf "${endStr}\n"
+    # printf "${endStr}\n"
+    printf "\033[${skipLineNumber}B\n"
     return 0
 }
 
