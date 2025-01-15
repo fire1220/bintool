@@ -1,0 +1,111 @@
+#!/bin/bash
+
+
+function catFileCommentHead(){
+    declare commitId="$1"
+    local temp="$(git cat-file -p "$commitId")"
+    local isComment=false
+    declare -a commitListTemp=()
+    while read -r row ;do
+        if [[ "$row" == "" ]];then
+            isComment=true
+            continue
+        fi
+        if ! $isComment ;then
+            local name="${row%% *}"
+            local value="${row#* }"
+            if [[ "$name" == "parent" ]];then
+                commitListTemp+=("$value")
+            fi
+        else
+            if [[ "$row" =~ ^Merge branch \'master\' into ]];then
+                break
+            fi
+        fi
+    done <<< "$temp"
+    echo "${commitListTemp[@]}"
+    return 0
+}
+
+function catFile(){
+    declare commitId="$1"
+    local temp="$(git cat-file -p "$commitId")"
+    local isComment=false
+    declare -a commitListTemp=()
+    while read -r row ;do
+        if [[ "$row" == "" ]];then
+            isComment=true
+            continue
+        fi
+        if ! $isComment ;then
+            local name="${row%% *}"
+            local value="${row#* }"
+            if [[ "$name" == "parent" ]];then
+                commitListTemp+=("$value")
+            fi
+        else
+            if [[ "$row" =~ ^Merge branch 'master' into ]];then
+                break
+            fi
+        fi
+    done <<< "$temp"
+    echo "${commitListTemp[@]}"
+    return 0
+}
+
+function gitExec(){
+    declare commitId="$1"
+    declare -a commitList=()
+    while true ;do
+        declare -a commitListTemp=()
+        declare commitIdTemp=""
+        commitListTemp="$(catFile "$commitId")" || {
+            echo "$commitListTemp"   
+            break
+        }
+        if [[ "$commitListTemp" == "" ]];then
+            break
+        fi
+        if (( ${#commitListTemp} == 0 ));then
+            break
+        fi
+        commitIdTemp="${commitListTemp[0]}"
+        if (( ${#commitListTemp} > 1 ));then
+            # for v in "${commitListTemp[@]}"; do
+            for k in "${!commitListTemp[@]}"; do
+                declare -a temp=()
+                temp="$(catFileCommentHead "$v")" || {
+                    echo "$temp"   
+                    break 2
+                }
+                if [[ "$temp" == "" ]];then
+                    break 2
+                fi
+                if [[ "$temp" =~ ^Merge branch '[a-z0-9\-]+' into 'master'$ ]];then
+                    continue
+                fi
+                commitIdTemp="${commitListTemp[$k]}"
+                if (($k != ${#commitListTemp[@]}-1));then
+                    echo "无法定位："
+                    echo "${commitListTemp[$k]}"
+                fi
+            done
+        fi
+        commitList+=("${commitIdTemp}")
+        if $isBreak ;then
+            break
+        fi
+        break
+    done
+}
+
+function main(){
+    declare -r commitId="$1"
+    if [[ "$commitId" == "" ]];then
+        echo "请输入commitId参数"
+        return 1
+    fi
+    gitExec "$commitId"
+}
+
+main "$@"
