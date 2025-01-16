@@ -37,7 +37,7 @@ CONFIG_DIR_PATH="$HOME/.config/jenkins"
 CONFIG_PATH="${CONFIG_DIR_PATH}/.jenkinsrc"
 CONFIT_JSON_PATH="${CONFIG_DIR_PATH}/jenkins.json"
 
-declare -r DIR_NAME="$(basename "$(pwd)")"
+declare -r DIR_NAME="$(basename "$(pwd)")"  # 当前目录名称
 
 declare -r SCRIPT_EXEC_TIME="$(date +'%s')"
 
@@ -89,18 +89,91 @@ fi
 
 # /job/k8s-test-go-wm-light-practice-2/409/wfapi/describe/api/json
 
+declare -r CURL_SRCIPT_JOBS_LIST="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/api/json'"                                    # 所有jobs列表
+declare -r CURL_SRCIPT_JOB_CONFIG="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/api/json'"                              # 获取单个job的参数配置
 declare -r CURL_SCRIPT_BUILD="curl -i -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/buildWithParameters' %s"                # 构建
 declare -r CURL_SCRIPT_LAST_BUILD="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/lastBuild/api/json?pretty=true'"      # 获取最近构建的详情
 declare -r CURL_SCRIPT_DETAILS="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/api/json?pretty=true'"                   # 获取构建的详情
 declare -r CURL_SCRIPT_QUEUE_ITEM="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '%s' | jq '{task:.task, executable:.executable}'"    # 获取发布状态，只有发布时才可用，该地址是构建成功201后header头里的Location
 
 declare -r CURL_SCRIPT_LAST_BUILD_NUMBER="${CURL_SCRIPT_LAST_BUILD} | jq '.number'"
+declare -r CURL_SRCIPT_JOBS_LIST_JQ="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/api/json' | jq -r '.jobs[]|.name'"         # 所有jobs名称列表
+declare -r CURL_SRCIPT_JOB_CONFIG_JQ="${CURL_SRCIPT_JOB_CONFIG} |jq -r '.property[]|{parameterDefinitions}|select(.parameterDefinitions != null)|.parameterDefinitions[]|.name'" # 获取单个job的参数配置
 
 # 在配置列表中获取pod name
 declare READ_CONFIG_JOB_NAME=""
 
 
 declare -a ParamList=()
+
+function setConfigParamCommitIdList(){
+    local list=""
+    listAll="$(eval "$CURL_SRCIPT_JOBS_LIST_JQ")"
+    local search="$DIR_NAME"
+
+    list="$(echo "$listAll" | grep "$search")"
+    read -d '' -ra list <<< "$list"
+    for k in "${!list[@]}"; do
+        local idx=$((k+1))
+        printf "%-3s %-30s\n" "${idx}" "${list[$k]}"
+    done
+    str="select num list(多个用空格分开):"
+    declare -a selectUniq=()
+    while read -p "$str" -r row;do
+        selectUniq=()
+        if [[ "$row" =~ [[:space:]] ]];then
+            local selectListTemp
+            read -d '' -ra selectListTemp <<< "$row"
+            for v in "${selectListTemp[@]}";do
+                if ! [[ "$v" =~ ^[0-9]+$ ]];then
+                    continue 2
+                fi
+                ((v--))
+                if [[ "${list[$v]}" == "" ]];then
+                    continue 2
+                fi
+                selectUniq[$v]=true
+            done
+            read -ra selectList <<< "${selectListTemp[@]}"
+            break
+        elif [[ "$row" =~ ^[0-9]+$ ]];then
+            ((row--))
+            selectUniq[$row]=true
+            break
+        else
+            search="$row"
+        fi
+    done
+    declare -a configParamsList=()
+    declare -a paramsList=()
+    for k in "${!selectUniq[@]}";do
+        jobName="${list[$k]}"
+        if $DEBUG ;then
+            echo $(printf "$CURL_SRCIPT_JOB_CONFIG_JQ" "$jobName")
+        fi
+        local paramsListTemp=""
+        paramsListTemp="$(eval $(printf "$CURL_SRCIPT_JOB_CONFIG_JQ" "$jobName"))"
+        while read -r row ;do
+            if [[ " ${paramsList[@]} " =~ " ${row} " ]];then
+                continue
+            fi
+            paramsList+=("${row}")
+        done <<< "$paramsListTemp"
+    done
+    for k in "${!paramsList[@]}" ;do
+        local idx=$(($k + 1))
+        printf "%-3s %-30s\n" "$idx" "${paramsList[$k]}"
+    done
+    # declare -p paramsList
+    str="select num list(多个用空格分开):"
+    while read -p "$str" -r row;do
+        echo "$row"
+    done
+}
+
+setConfigParamCommitIdList
+exit 0
+
 
 function getConfigParamCommitIdList(){
     local dirName="$1"
