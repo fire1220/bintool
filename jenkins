@@ -379,6 +379,10 @@ function buildAndProgress(){
         exit 1
     fi
     declare configCommitIdList="$(configParamCommitIdList "$DIR_NAME")"
+    if [[ "$configCommitIdList" == "" ]];then
+        echo "没有找到对应配置"
+        return 0
+    fi
     read -ra configCommitIdList <<< "$configCommitIdList"
     local params=""
     for paramKey in "${configCommitIdList[@]}";do
