@@ -334,6 +334,8 @@ function getPodNameList(){
         fi
         list+=("$podName")
     done
+    echo "${list[@]}"
+    return 0
 }
 
 # 构建并且显示构建进度
