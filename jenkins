@@ -170,10 +170,11 @@ function main(){
         local jobNameAndbuildNumber="$mainParam"
         if [[ "$jobNameAndbuildNumber" == "" ]];then
             getJobNameByRead
-            if [[ "$READ_CONFIG_JOB_NAME" == "" ]];then
+            jobName="$READ_CONFIG_JOB_NAME"
+            if [[ "$jobName" == "" ]];then
                 exit 0
             fi
-            lastBuildId="$(lastBuild "$READ_CONFIG_JOB_NAME"| jq -r '.id')"||{
+            lastBuildId="$(lastBuild "$jobName"| jq -r '.id')"||{
                 type jq &> /dev/null || {
                     cat <<!
             $(echo -e "\033[31m 需要安装jq命令\033[0m：")
@@ -187,7 +188,7 @@ function main(){
             if [[ "$lastBuildId" == "" ]];then
                 echo "没有找到对应的id"
             fi
-            jobNameAndbuildNumber="${READ_CONFIG_JOB_NAME}/${lastBuildId}"
+            jobNameAndbuildNumber="${jobName}/${lastBuildId}"
         fi
         details "$jobNameAndbuildNumber"
         exit 0
