@@ -107,68 +107,86 @@ declare READ_CONFIG_JOB_NAME=""
 declare -a ParamList=()
 
 function setConfigParamCommitIdList(){
-    local list=""
-    listAll="$(eval "$CURL_SRCIPT_JOBS_LIST_JQ")"
-    local search="$DIR_NAME"
+    listAllRes="$(eval "$CURL_SRCIPT_JOBS_LIST_JQ")"
+    local closureReadNumberSearch="$DIR_NAME"
 
-    list="$(echo "$listAll" | grep "$search")"
-    read -d '' -ra list <<< "$list"
-    for k in "${!list[@]}"; do
-        local idx=$((k+1))
-        printf "%-3s %-30s\n" "${idx}" "${list[$k]}"
-    done
-    str="select num list(多个用空格分开):"
-    declare -a selectUniq=()
-    while read -p "$str" -r row;do
-        selectUniq=()
-        if [[ "$row" =~ [[:space:]] ]];then
-            local selectListTemp
-            read -d '' -ra selectListTemp <<< "$row"
-            for v in "${selectListTemp[@]}";do
-                if ! [[ "$v" =~ ^[0-9]+$ ]];then
-                    continue 2
-                fi
-                ((v--))
-                if [[ "${list[$v]}" == "" ]];then
-                    continue 2
-                fi
-                selectUniq[$v]=true
-            done
-            read -ra selectList <<< "${selectListTemp[@]}"
-            break
-        elif [[ "$row" =~ ^[0-9]+$ ]];then
-            ((row--))
-            selectUniq[$row]=true
-            break
-        else
-            search="$row"
-        fi
-    done
+    read -d '' -ra closureReadNumberDataList <<< "$listAllRes"
+    closureReadNumberReadStr="select num list(多个用空格分开):"
+    function closureReadNumber(){
+        declare -a list=()
+        for v in "${closureReadNumberDataList[@]}";do
+            if [[ "$closureReadNumberSearch" == "" ]];then
+                list+=("$v")
+            elif [[ "$v" == *"${closureReadNumberSearch}"*  ]];then
+                list+=("$v")
+            fi
+        done
+        for k in "${!list[@]}"; do
+            local idx=$((k+1))
+            printf "%-3s %-30s\n" "${idx}" "${list[$k]}"
+        done
+        while read -p "$closureReadNumberReadStr" -r row;do
+            closureReadNumberSelectUniq=()
+            if [[ "$row" =~ [[:space:]] ]];then
+                local selectListTemp
+                read -d '' -ra selectListTemp <<< "$row"
+                for v in "${selectListTemp[@]}";do
+                    if ! [[ "$v" =~ ^[0-9]+$ ]];then
+                        continue 2
+                    fi
+                    ((v--))
+                    if [[ "${list[$v]}" == "" ]];then
+                        continue 2
+                    fi
+                    closureReadNumberSelectUniq[$v]=true
+                done
+                read -ra selectList <<< "${selectListTemp[@]}"
+                break
+            elif [[ "$row" =~ ^[0-9]+$ ]];then
+                ((row--))
+                closureReadNumberSelectUniq[$row]=true
+                break
+            else
+                closureReadNumberSearch="$row"
+            fi
+        done
+        closureReadNumberSearch=""
+    }
+    declare -a closureReadNumberSelectUniq=()
+    closureReadNumber
+    # declare -p closureReadNumberSelectUniq
+
     declare -a configParamsList=()
     declare -a paramsList=()
-    for k in "${!selectUniq[@]}";do
-        jobName="${list[$k]}"
+    declare -p closureReadNumberSelectUniq
+    declare -a selectJobsList=()
+    for k in "${!closureReadNumberSelectUniq[@]}";do
+        jobName="${closureReadNumberDataList[$k]}"
+        selectJobsList+=("$jobName")
         if $DEBUG ;then
             echo $(printf "$CURL_SRCIPT_JOB_CONFIG_JQ" "$jobName")
         fi
         local paramsListTemp=""
         paramsListTemp="$(eval $(printf "$CURL_SRCIPT_JOB_CONFIG_JQ" "$jobName"))"
+        declare -a paramsListAllTemp=()
+        read -d '' -ra paramsListAllTemp <<< "${paramsList[@]}"
+        declare -p paramsListAllTemp
         while read -r row ;do
-            if [[ " ${paramsList[@]} " =~ " ${row} " ]];then
+            if [[ " ${paramsListAllTemp[@]} " =~ " ${row} " ]];then
                 continue
             fi
             paramsList+=("${row}")
         done <<< "$paramsListTemp"
     done
-    for k in "${!paramsList[@]}" ;do
-        local idx=$(($k + 1))
-        printf "%-3s %-30s\n" "$idx" "${paramsList[$k]}"
+    read -d '' -ra closureReadNumberDataList <<< "${paramsList[@]}"
+    closureReadNumberReadStr="select num list(多个用空格分开1):"
+    closureReadNumber
+    declare -a selectParamsList=()
+    for k in "${!closureReadNumberSelectUniq[@]}" ;do
+        selectParamsList+=("${closureReadNumberDataList[$k]}")
     done
-    # declare -p paramsList
-    str="select num list(多个用空格分开):"
-    while read -p "$str" -r row;do
-        echo "$row"
-    done
+    declare -p selectJobsList
+    declare -p selectParamsList
 }
 
 setConfigParamCommitIdList
