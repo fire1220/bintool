@@ -1,37 +1,18 @@
 #!/bin/bash
 
-
-function catFileCommentHead(){
-    declare commitId="$1"
-    local temp="$(git cat-file -p "$commitId")"
-    local isComment=false
-    declare -a commitListTemp=()
-    while read -r row ;do
-        if [[ "$row" == "" ]];then
-            isComment=true
-            continue
-        fi
-        if ! $isComment ;then
-            local name="${row%% *}"
-            local value="${row#* }"
-            if [[ "$name" == "parent" ]];then
-                commitListTemp+=("$value")
-            fi
-        else
-            if [[ "$row" =~ ^Merge branch \'master\' into ]];then
-                break
-            fi
-        fi
-    done <<< "$temp"
-    echo "${commitListTemp[@]}"
-    return 0
-}
-
 function catFile(){
     declare commitId="$1"
-    local temp="$(git cat-file -p "$commitId")"
+    declare isFindMergeExit="$2"
+    if [[ "$isNotExit" != "false" ]];then
+        isFindMergeExit=true
+    fi
+    declare -a listTemp=()
+    local temp
+    temp="$(git cat-file -p "$commitId")" ||{
+        echo "git cat-file -p \"$commitId\""
+        return 1
+    }
     local isComment=false
-    declare -a commitListTemp=()
     while read -r row ;do
         if [[ "$row" == "" ]];then
             isComment=true
@@ -41,62 +22,76 @@ function catFile(){
             local name="${row%% *}"
             local value="${row#* }"
             if [[ "$name" == "parent" ]];then
-                commitListTemp+=("$value")
+                listTemp+=("$value")
             fi
         else
-            if [[ "$row" =~ ^Merge branch 'master' into ]];then
-                break
+            if $isFindMergeExit && [[ "$row" =~ ^Merge\ branch\ \'master\'\ into\  ]];then
+                echo ""
+                return 0
             fi
         fi
     done <<< "$temp"
-    echo "${commitListTemp[@]}"
+    echo "${listTemp[@]}"
     return 0
 }
 
 function gitExec(){
     declare commitId="$1"
     declare -a commitList=()
-    while true ;do
+    commitList+=("$commitId")
+    declare idx=0
+    declare maxNum=1000
+    local tempList
+    for v in {1..1000};do
+        idx="$v"
         declare -a commitListTemp=()
         declare commitIdTemp=""
+        if [[ "$commitId" == "" ]];then
+            break
+        fi
         commitListTemp="$(catFile "$commitId")" || {
             echo "$commitListTemp"   
             break
         }
+        commitId=""
         if [[ "$commitListTemp" == "" ]];then
             break
         fi
-        if (( ${#commitListTemp} == 0 ));then
-            break
-        fi
+        read -ra commitListTemp <<< "$commitListTemp"
         commitIdTemp="${commitListTemp[0]}"
-        if (( ${#commitListTemp} > 1 ));then
-            # for v in "${commitListTemp[@]}"; do
-            for k in "${!commitListTemp[@]}"; do
-                declare -a temp=()
-                temp="$(catFileCommentHead "$v")" || {
-                    echo "$temp"   
+        if (( ${#commitListTemp[@]} > 1 ));then
+            isFindNot=true
+            declare -a tempL=()
+            for v in "${commitListTemp[@]}"; do
+                tempL+=("$v")
+                tempList="$(catFile "$v")" || {
+                    echo "$tempList"   
                     break 2
                 }
-                if [[ "$temp" == "" ]];then
-                    break 2
-                fi
-                if [[ "$temp" =~ ^Merge branch '[a-z0-9\-]+' into 'master'$ ]];then
+                if [[ "$tempList" == "" ]];then
+                    isFindNot=false
+                    commitList+=("$v")
                     continue
                 fi
-                commitIdTemp="${commitListTemp[$k]}"
-                if (($k != ${#commitListTemp[@]}-1));then
-                    echo "无法定位："
-                    echo "${commitListTemp[$k]}"
-                fi
             done
+            if $isFindNot ;then
+                for v in ${tempL[@]} ;do
+                    commitList+=("$v")
+                done
+            fi
+            break 2
         fi
+        commitId="$commitIdTemp"
         commitList+=("${commitIdTemp}")
-        if $isBreak ;then
-            break
-        fi
-        break
     done
+    if [[ "$idx" == "$maxNum" ]];then
+        echo "已经查询了${maxNum}次了"
+    fi
+    for v in "${commitList[@]}" ;do
+        git --no-pager log --oneline -n 1 --pretty=format:"%C(yellow)%h %C(cyan)%ad %C(red)%d %C(reset)%s %C(green)[%cn]" "$v"
+        echo ""
+    done
+    return 0
 }
 
 function main(){
