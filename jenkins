@@ -379,9 +379,17 @@ function buildAndProgress(){
     declare commitId="$1"
     if [[ "$commitId" == "" ]];then
         echo >&2 "commitId 不能为空"
-        exit 1
+        return 1
     fi
-    declare configCommitIdList="$(configParamCommitIdList "$DIR_NAME")"
+    declare configCommitIdList=""
+    configCommitIdList="$(configParamCommitIdList "$DIR_NAME")" || {
+        if [[ "$?" == "10" ]];then
+            echo "是否需要录入配置"
+        else
+            echo "获取配置失败"
+            return 10
+        fi
+    }
     if [[ "$configCommitIdList" == "" ]];then
         echo "没有找到对应配置"
         return 0
