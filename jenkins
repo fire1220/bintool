@@ -102,6 +102,43 @@ declare READ_CONFIG_JOB_NAME=""
 
 declare -a ParamList=()
 
+function configParamCommitIdList(){
+    local dirName="$1"
+    if [[ "$dirName" == "" ]];then
+        return 0
+    fi
+    declare -a list=()
+    for v in "${PARAM_COMMIT_ID_LIST[@]}";do
+        local name="${v%%=*}"
+        local value="${v#*=}"
+        if [[ "$name" != "$dirName" ]];then
+            continue
+        fi
+        list+=("$value")
+    done
+    echo "${list[@]}"
+    return 0
+}
+
+function configPodNameList(){
+    local dirName="$1"
+    if [[ "$dirName" == "" ]];then
+        return 0
+    fi
+
+    declare -a list=()
+    for v in "${POD_NAME_LIST[@]}";do
+        local name="${v%%=*}"
+        local value="${v#*=}"
+        if [[ "$name" != "$dirName" ]];then
+            continue
+        fi
+        list+=("$value")
+    done
+    echo "${list[@]}"
+    return 0
+}
+
 function main(){
     local mainParam=""
     local isDetails=false
@@ -334,43 +371,6 @@ function details(){
         fi
         return 0
     done
-    return 0
-}
-
-function configParamCommitIdList(){
-    local dirName="$1"
-    if [[ "$dirName" == "" ]];then
-        return 0
-    fi
-    declare -a list=()
-    for v in "${PARAM_COMMIT_ID_LIST[@]}";do
-        local name="${v%%=*}"
-        local value="${v#*=}"
-        if [[ "$name" != "$dirName" ]];then
-            continue
-        fi
-        list+=("$value")
-    done
-    echo "${list[@]}"
-    return 0
-}
-
-function configPodNameList(){
-    local dirName="$1"
-    if [[ "$dirName" == "" ]];then
-        return 0
-    fi
-
-    declare -a list=()
-    for v in "${POD_NAME_LIST[@]}";do
-        local name="${v%%=*}"
-        local value="${v#*=}"
-        if [[ "$name" != "$dirName" ]];then
-            continue
-        fi
-        list+=("$value")
-    done
-    echo "${list[@]}"
     return 0
 }
 
