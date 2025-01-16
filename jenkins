@@ -159,7 +159,7 @@ function main(){
     done
     shift $(($OPTIND-1))
 
-    if [[ "$USERNAME" == "" ]] || [[ "$APP_TOKEN" == "" ]] || [[ "$URL" == ""  ]] || [[ "$POD_NAME_LIST" == "" ]] || [[ "$PARAM_COMMIT_ID_LIST" == "" ]];then
+    if [[ "$USERNAME" == "" ]] || [[ "$APP_TOKEN" == "" ]] || [[ "$URL" == ""  ]] ;then
         echo "请先编辑配置文件：$CONFIG_PATH"
         exit 0
     fi
