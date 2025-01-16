@@ -102,7 +102,7 @@ declare READ_CONFIG_JOB_NAME=""
 
 declare -a ParamList=()
 
-function configParamCommitIdList(){
+function getConfigParamCommitIdList(){
     local dirName="$1"
     if [[ "$dirName" == "" ]];then
         return 0
@@ -120,7 +120,7 @@ function configParamCommitIdList(){
     return 0
 }
 
-function configPodNameList(){
+function getConfigPodNameList(){
     local dirName="$1"
     if [[ "$dirName" == "" ]];then
         return 0
@@ -255,7 +255,7 @@ function lastBuild(){
     fi
     local i=1
     declare -a podNameList=()
-    declare configPodList="$(configPodNameList "$DIR_NAME")"
+    declare configPodList="$(getConfigPodNameList "$DIR_NAME")"
     if [[ "$configPodList" == "" ]];then
         echo "没有找到对应配置"
         return 0
@@ -289,7 +289,7 @@ function lastBuild(){
 function getJobNameByRead(){
     local i=1
     declare -a podNameList=()
-    declare configPodList="$(configPodNameList "$DIR_NAME")"
+    declare configPodList="$(getConfigPodNameList "$DIR_NAME")"
     if [[ "$configPodList" == "" ]];then
         echo "没有找到对应配置"
         return 0
@@ -342,7 +342,7 @@ function details(){
     local buildNumber="$jobNameAndbuildNumber"
     local jobNameList=()
     local i=0
-    declare configPodList="$(configPodNameList "$DIR_NAME")"
+    declare configPodList="$(getConfigPodNameList "$DIR_NAME")"
     if [[ "$configPodList" == "" ]];then
         echo "没有找到对应配置"
         return 0
@@ -382,7 +382,7 @@ function buildAndProgress(){
         return 1
     fi
     declare configCommitIdList=""
-    configCommitIdList="$(configParamCommitIdList "$DIR_NAME")" || {
+    configCommitIdList="$(getConfigParamCommitIdList "$DIR_NAME")" || {
         if [[ "$?" == "10" ]];then
             echo "是否需要录入配置"
         else
@@ -409,7 +409,7 @@ function buildAndProgress(){
     local podList=()
     local execStr=""
     local locationUrlList=()
-    declare configPodList="$(configPodNameList "$DIR_NAME")"
+    declare configPodList="$(getConfigPodNameList "$DIR_NAME")"
     if [[ "$configPodList" == "" ]];then
         echo "没有找到对应配置"
         return 0
