@@ -319,6 +319,23 @@ function details(){
     return 0
 }
 
+function getPodNameList(){
+    local dirName="$1"
+    if [[ "$dirName" == "" ]];then
+        return 0
+    fi
+
+    declare -a list=()
+    for v in "${POD_NAME_LIST[@]}";do
+        local name="${v%%=*}"
+        local podName="${v#*=}"
+        if [[ "$name" != "$dirName" ]];then
+            continue
+        fi
+        list+=("$podName")
+    done
+}
+
 # 构建并且显示构建进度
 function buildAndProgress(){
     commitId="$1"

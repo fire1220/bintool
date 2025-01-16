@@ -182,7 +182,7 @@ function main(){
             echo -e "       • p: Push Again    "
             echo -e "       • s: Skip          "
             echo -e "       • e: Exit          "
-            str=$(echo -e  "\033[31;1mSelect Execution(y/n or s):\033[0m")
+            str=$(echo -e  "\033[31;1mSelect Execution(p/s or e):\033[0m")
             while read -p "$str" -r row ;do
                 if [[ "$row" == "e" || "$row" == "E" ]];then
                     return 1
