@@ -33,7 +33,9 @@ configInit=$(cat <<!
 !
 )
 
-CONFIG_PATH="$HOME/.config/jenkins/.jenkinsrc"
+CONFIG_DIR_PATH="$HOME/.config/jenkins"
+CONFIG_PATH="${CONFIG_DIR_PATH}/.jenkinsrc"
+CONFIT_JSON_PATH="${CONFIG_DIR_PATH}/jenkins.json"
 
 declare -r DIR_NAME="$(basename "$(pwd)")"
 
