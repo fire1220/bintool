@@ -319,7 +319,25 @@ function details(){
     return 0
 }
 
-function getPodNameList(){
+function configParamCommitIdList(){
+    local dirName="$1"
+    if [[ "$dirName" == "" ]];then
+        return 0
+    fi
+    declare -a list=()
+    for v in "${PARAM_COMMIT_ID_LIST[@]}";do
+        local name="${v%%=*}"
+        local value="${v#*=}"
+        if [[ "$name" != "$dirName" ]];then
+            continue
+        fi
+        list+=("$value")
+    done
+    echo "${list[@]}"
+    return 0
+}
+
+function configPodNameList(){
     local dirName="$1"
     if [[ "$dirName" == "" ]];then
         return 0
@@ -328,11 +346,11 @@ function getPodNameList(){
     declare -a list=()
     for v in "${POD_NAME_LIST[@]}";do
         local name="${v%%=*}"
-        local podName="${v#*=}"
+        local value="${v#*=}"
         if [[ "$name" != "$dirName" ]];then
             continue
         fi
-        list+=("$podName")
+        list+=("$value")
     done
     echo "${list[@]}"
     return 0
