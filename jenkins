@@ -35,7 +35,8 @@ configInit=$(cat <<!
 
 CONFIG_DIR_PATH="$HOME/.config/jenkins"
 CONFIG_PATH="${CONFIG_DIR_PATH}/.jenkinsrc"
-CONFIT_JSON_PATH="${CONFIG_DIR_PATH}/jenkins.json"
+# CONFIT_JSON_PATH="${CONFIG_DIR_PATH}/jenkins.json"
+CONFIT_PROJECT_PATH="${CONFIG_DIR_PATH}/.projectrc"
 
 declare -r DIR_NAME="$(basename "$(pwd)")"  # 当前目录名称
 
@@ -113,6 +114,13 @@ function setConfigParamCommitIdList(){
     read -d '' -ra closureReadNumberDataList <<< "$listAllRes"
     closureReadNumberReadStr="select num list(多个用空格分开):"
     function closureReadNumber(){
+        if [[ "$closureReadNumberDataList" == "" ]];then
+            return 0
+        fi
+        if [[ "$closureReadNumberReadStr" == "" ]];then
+            closureReadNumberReadStr="select num list(多个用空格分开):"
+        fi
+        closureReadNumberSelectUniq=()
         declare -a list=()
         for v in "${closureReadNumberDataList[@]}";do
             if [[ "$closureReadNumberSearch" == "" ]];then
@@ -151,10 +159,10 @@ function setConfigParamCommitIdList(){
             fi
         done
         closureReadNumberSearch=""
+        closureReadNumberReadStr=""
     }
     declare -a closureReadNumberSelectUniq=()
     closureReadNumber
-    # declare -p closureReadNumberSelectUniq
 
     declare -a configParamsList=()
     declare -a paramsList=()
@@ -187,6 +195,7 @@ function setConfigParamCommitIdList(){
     done
     declare -p selectJobsList
     declare -p selectParamsList
+    # CONFIT_PROJECT_PATH
 }
 
 setConfigParamCommitIdList
