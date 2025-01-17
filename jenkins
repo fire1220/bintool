@@ -256,9 +256,6 @@ function setConfigParamCommitIdList(){
     echo "$(declare -p CONFIG_DIR_TO_JOBS_NAME_LIST && declare -p CONFIG_DIR_TO_PARAMS_NAME_LIST)" > "$CONFIT_PROJECT_PATH"
 }
 
-setConfigParamCommitIdList
-exit 1
-
 function getConfigParamCommitIdList(){
     local dirName="$1"
     if [[ "$dirName" == "" ]];then
