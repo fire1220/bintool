@@ -236,8 +236,6 @@ function setConfigParamCommitIdList(){
     for k in "${!closureReadNumberSelectUniq[@]}" ;do
         selectParamsList+=("${closureReadNumberDataList[$k]}")
     done
-    declare -p selectJobsList
-    declare -p selectParamsList
     for v in "${selectJobsList[@]}";do
         local value="${DIR_NAME}=${v}"
         if [[ " ${CONFIG_DIR_TO_JOBS_NAME_LIST[@]} " =~ " ${value} " ]];then
