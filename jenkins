@@ -375,17 +375,19 @@ function main(){
                         helpInit
                         ;;
                     "resetconfig")
-                        echo -n "$CONFIG_PATH"
-                        echo -n "$CONFIT_PROJECT_PATH"
+                        echo -n > "$CONFIG_PATH"
+                        echo -n > "$CONFIT_PROJECT_PATH"
                         return 0
                         ;;
                     "setconfig")
                         setConfigBaseInfo true
                         setConfigParamCommitIdList true
+                        return 0
                         ;;
                     "appendprojectconfig")
                         setConfigBaseInfo
                         setConfigParamCommitIdList
+                        return 0
                         ;;
                     "debug")
                         DEBUG=true
