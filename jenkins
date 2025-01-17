@@ -228,7 +228,7 @@ function setConfigParamCommitIdList(){
         done <<< "$paramsListTemp"
     done
     read -d '' -ra closureReadNumberDataList <<< "${paramsList[@]}"
-    closureReadNumberReadStr="select num list(多个用空格分开1):"
+    closureReadNumberReadStr="select num list(多个用空格分开):"
     closureReadNumber
     declare -a selectParamsList=()
     for k in "${!closureReadNumberSelectUniq[@]}" ;do
