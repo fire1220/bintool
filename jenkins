@@ -218,13 +218,13 @@ function setConfigParamCommitIdList(){
     local closureReadNumberSearch="$DIR_NAME"
 
     read -d '' -ra closureReadNumberDataList <<< "$listAllRes"
-    closureReadNumberReadStr="选择目录绑定的项目编号(多个用空格分开):"
+    closureReadNumberReadStr="选择目录绑定的项目名称(输入编号，多个用空格分开):"
     function closureReadNumber(){
         if [[ "$closureReadNumberDataList" == "" ]];then
             return 0
         fi
         if [[ "$closureReadNumberReadStr" == "" ]];then
-            closureReadNumberReadStr="select num list(多个用空格分开):"
+            closureReadNumberReadStr="select num list(输入编号，多个用空格分开):"
         fi
         closureReadNumberSelectUniq=()
         declare -a list=()
@@ -312,7 +312,7 @@ function setConfigParamCommitIdList(){
         done <<< "$paramsListTemp"
     done
     read -d '' -ra closureReadNumberDataList <<< "${paramsList[@]}"
-    closureReadNumberReadStr="select num list(多个用空格分开):"
+    closureReadNumberReadStr="选择参数名称(发布时会把commitId传入该参数里)(输入编号，多个用空格分开):"
     closureReadNumber
     declare -a selectParamsList=()
     for k in "${!closureReadNumberSelectUniq[@]}" ;do
@@ -332,8 +332,7 @@ function setConfigParamCommitIdList(){
         fi
         CONFIG_DIR_TO_PARAMS_NAME_LIST+=("${value}")
     done
-
-    echo "$(declare -p CONFIG_DIR_TO_JOBS_NAME_LIST && declare -p CONFIG_DIR_TO_PARAMS_NAME_LIST)" > "$CONFIT_PROJECT_PATH"
+    echo "$(echo "# 当前目录和jobs对应关系";declare -p CONFIG_DIR_TO_JOBS_NAME_LIST;echo "# commit id 作为参数的值";declare -p CONFIG_DIR_TO_PARAMS_NAME_LIST)" > "$CONFIT_PROJECT_PATH"
 }
 
 function getConfigParamCommitIdList(){
