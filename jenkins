@@ -105,7 +105,6 @@ function testNetConfig(){
             return 30
             ;;
         *)
-        echo "$res"
             echo >&2 "配置参数错误,测试请求jenkins失败"
             return 40
             ;;
