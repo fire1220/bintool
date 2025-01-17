@@ -156,7 +156,11 @@ function setConfigParamCommitIdList(){
             done
             for k in "${!list[@]}"; do
                 local idx=$((k+1))
-                printf "%-3s %-30s\n" "${idx}" "${list[$k]}"
+                local value="${list[$k]}"
+                if [[ "$closureReadNumberSearch" != "" ]] && [[ "$closureReadNumberSearch" != "*" ]];then
+                    value="$(echo "$value" | tr "$closureReadNumberSearch" "\033[33m${closureReadNumberSearch}\033[0m")"
+                fi
+                printf "%-3s %-30s\n" "${idx}" "$value"
             done
 
             if [[ "$list" == "" ]];then
