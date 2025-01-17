@@ -77,16 +77,20 @@ function helpInit(){
 }
 
 
+if [ ! -d "$CONFIG_DIR_PATH" ];then
+    mkdir -p "$CONFIG_DIR_PATH"
+fi
+
 if [ ! -f "$CONFIG_PATH" ];then
-    if [ ! -d "$(dirname "$CONFIG_PATH")" ];then
-        mkdir -p "$(dirname "$CONFIG_PATH")"
-    fi
     echo "$configInit" > "$CONFIG_PATH"
+fi
+
+if [ ! -f "$CONFIT_PROJECT_PATH" ];then
+    touch "$CONFIT_PROJECT_PATH"
 fi
 
 . "$CONFIG_PATH"
 . "$CONFIT_PROJECT_PATH"
-
 
 # /job/k8s-test-go-wm-light-practice-2/409/wfapi/describe/api/json
 
@@ -104,10 +108,29 @@ declare -r CURL_SRCIPT_JOB_CONFIG_JQ="${CURL_SRCIPT_JOB_CONFIG} |jq -r '.propert
 # 在配置列表中获取pod name
 declare READ_CONFIG_JOB_NAME=""
 
-
+# 全局参数变量列表
 declare -a ParamList=()
 
 function setConfigParamCommitIdList(){
+    isAsk="$1"
+    if [[ "$isAsk" == "" ]] || [[ "$isAsk" != "true" ]];then
+        isAsk=false
+    fi
+    if $isAsk ;then
+        while read -p "是否需要添加配置[N/y]:" -r row;do
+            case "$row" in
+                y|Y)
+                    break
+                    ;;
+                n|N|"")
+                    return 0
+                    ;;
+                *)
+                    continue
+                    ;;
+            esac
+        done
+    fi
     listAllRes="$(eval "$CURL_SRCIPT_JOBS_LIST_JQ")"
     local closureReadNumberSearch="$DIR_NAME"
 
@@ -212,9 +235,8 @@ function setConfigParamCommitIdList(){
     echo "$(declare -p CONFIG_DIR_TO_JOBS_NAME_LIST && declare -p CONFIG_DIR_TO_PARAMS_NAME_LIST)" > "$CONFIT_PROJECT_PATH"
 }
 
-setConfigParamCommitIdList
-exit 0
-
+setConfigParamCommitIdList true
+exit 1
 
 function getConfigParamCommitIdList(){
     local dirName="$1"
@@ -369,7 +391,11 @@ function lastBuild(){
     fi
     local i=1
     declare -a podNameList=()
-    declare configPodList="$(getConfigPodNameList "$DIR_NAME")"
+    declare configPodList=""
+    configPodList="$(getConfigPodNameList "$DIR_NAME")" || {
+        setConfigParamCommitIdList
+        configPodList="$(getConfigPodNameList "$DIR_NAME")"
+    }
     if [[ "$configPodList" == "" ]];then
         echo "没有找到对应配置"
         return 0
@@ -403,7 +429,11 @@ function lastBuild(){
 function getJobNameByRead(){
     local i=1
     declare -a podNameList=()
-    declare configPodList="$(getConfigPodNameList "$DIR_NAME")"
+    declare configPodList=""
+    configPodList="$(getConfigPodNameList "$DIR_NAME")" || {
+        setConfigParamCommitIdList
+        configPodList="$(getConfigPodNameList "$DIR_NAME")"
+    }
     if [[ "$configPodList" == "" ]];then
         echo "没有找到对应配置"
         return 0
@@ -456,7 +486,11 @@ function details(){
     local buildNumber="$jobNameAndbuildNumber"
     local jobNameList=()
     local i=0
-    declare configPodList="$(getConfigPodNameList "$DIR_NAME")"
+    declare configPodList=""
+    configPodList="$(getConfigPodNameList "$DIR_NAME")" || {
+        setConfigParamCommitIdList
+        configPodList="$(getConfigPodNameList "$DIR_NAME")"
+    }
     if [[ "$configPodList" == "" ]];then
         echo "没有找到对应配置"
         return 0
@@ -523,7 +557,11 @@ function buildAndProgress(){
     local podList=()
     local execStr=""
     local locationUrlList=()
-    declare configPodList="$(getConfigPodNameList "$DIR_NAME")"
+    declare configPodList=""
+    configPodList="$(getConfigPodNameList "$DIR_NAME")" || {
+        setConfigParamCommitIdList
+        configPodList="$(getConfigPodNameList "$DIR_NAME")"
+    }
     if [[ "$configPodList" == "" ]];then
         echo "没有找到对应配置"
         return 0
