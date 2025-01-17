@@ -1,38 +1,5 @@
 #!/bin/bash
 
-configInit=$(cat <<!
-#
-# # 该配置是shell脚本的一部分,注意等号两边不能有空格
-#
-# # 是否是调试模式
-# DEBUG=true
-# 
-# # 【必须配置】 jenkins 用户名
-# USERNAME=xxxx
-#
-# # 【必须配置】jenkins 的 APP_TOKEN
-# APP_TOKEN=xxxx
-#
-# # 【必须配置】jenkins 的地址
-# URL=https://test-jenkins.xxxx.com
-#
-# # 【必须配置】当前文件夹和 pod name 的对应关系
-# CONFIG_DIR_TO_JOBS_NAME_LIST=(
-#     wm-light-backend=k8s-test-php-backend-new
-#     wm-light-frontend=k8s-test-php-frontend-new
-# )
-#
-# # 【必须配置】当前文件夹和 jenkins 的发布参数的对应关系
-# # 会把 git 的 commit id 传入到该参数里
-# CONFIG_DIR_TO_PARAMS_NAME_LIST=(
-#     wm-backend=backend_version
-#     wm-backend=title
-#     wm-frontend=frontend_version
-# )
-#
-!
-)
-
 declare -r CONFIG_DIR_PATH="$HOME/.config/jenkins"
 declare -r CONFIG_PATH="${CONFIG_DIR_PATH}/.jenkinsrc"
 declare -r CONFIT_PROJECT_PATH="${CONFIG_DIR_PATH}/.projectrc"
@@ -54,9 +21,9 @@ function helpInit(){
         command [-cd] commitId
             构建jenkins或查看已经构建的信息
 
-        第一次执行会自动生成一个配置文件:
-            1.配置文件路径："$CONFIG_PATH"
-            2.编辑该配置文件后就可以使用了
+        自动生成配置文件:
+            1. "$CONFIG_PATH"
+            2. "$CONFIT_PROJECT_PATH"
 
         参数：
             -h / --help                     帮助
@@ -82,7 +49,7 @@ if [ ! -d "$CONFIG_DIR_PATH" ];then
 fi
 
 if [ ! -f "$CONFIG_PATH" ];then
-    echo "$configInit" > "$CONFIG_PATH"
+    touch "$CONFIG_PATH"
 fi
 
 if [ ! -f "$CONFIT_PROJECT_PATH" ];then
