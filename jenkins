@@ -111,6 +111,7 @@ declare READ_CONFIG_JOB_NAME=""
 # 全局参数变量列表
 declare -a ParamList=()
 
+# 添加修改配置文件
 function setConfigParamCommitIdList(){
     isAsk="$1"
     if [[ "$isAsk" == "" ]] || [[ "$isAsk" != "true" ]];then
@@ -135,7 +136,7 @@ function setConfigParamCommitIdList(){
     local closureReadNumberSearch="$DIR_NAME"
 
     read -d '' -ra closureReadNumberDataList <<< "$listAllRes"
-    closureReadNumberReadStr="select num list(多个用空格分开):"
+    closureReadNumberReadStr="选择目录绑定的项目编号(多个用空格分开):"
     function closureReadNumber(){
         if [[ "$closureReadNumberDataList" == "" ]];then
             return 0
@@ -145,6 +146,7 @@ function setConfigParamCommitIdList(){
         fi
         closureReadNumberSelectUniq=()
         declare -a list=()
+        declare readNumberStr="$closureReadNumberReadStr"
         while true;do
             list=()
             for v in "${closureReadNumberDataList[@]}";do
@@ -164,10 +166,10 @@ function setConfigParamCommitIdList(){
             done
 
             if [[ "$list" == "" ]];then
-                closureReadNumberReadStr="没有找到筛选到${closureReadNumberSearch}数据，输入*获取全部："
+                readNumberStr="没有找到筛选到${closureReadNumberSearch}数据，输入*获取全部："
             fi
-
-            read -p "$closureReadNumberReadStr" -r row
+            read -p "$readNumberStr" -r row
+            readNumberStr="$closureReadNumberReadStr"
             if [[ "$row" == "" ]];then
                 continue
             fi
