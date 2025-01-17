@@ -21,10 +21,6 @@ function helpInit(){
         command [-cd] commitId
             构建jenkins或查看已经构建的信息
 
-        自动生成配置文件:
-            1. "$CONFIG_PATH"
-            2. "$CONFIT_PROJECT_PATH"
-
         参数：
             -h / --help                     帮助
             -c / commitid  commit_id        构建Jenkins，commitId(默认选项)
@@ -38,6 +34,10 @@ function helpInit(){
             -l / lastinfo                   查看最后发布的信息
                                                 可选参数格式：jobName(如果不传jobName则进入列表手动选择)
                                                 案例：k8s-test-php-wm-light-backend-new
+            debug                           开启调试模式
+            resetconfig                     重置所有配置
+            setconfig                       设置配置
+            appendprojectconfig             追加项目配置
 
 !
     exit 0
@@ -139,7 +139,10 @@ function setConfigBaseInfo(){
         APP_TOKEN="${inputValueList[2]}"
         curlUrlInit
         res="$(testNetConfig)" && {
-            echo "$(echo "# DEBUG=true";echo "# 用户名";declare -p USERNAME;echo "# URL";declare -p URL;echo "# APP Token";declare -p APP_TOKEN)" > "$CONFIG_PATH"
+            echo "$(echo "# 用户名";declare -p USERNAME;echo "# URL";declare -p URL;echo "# APP Token";declare -p APP_TOKEN)" > "$CONFIG_PATH"
+            if $forcsSet ;then
+                echo -n > "$CONFIT_PROJECT_PATH"
+            fi
             break
         }
         while read -p "$(echo -e "${res}\033[33m➜\033[0m是否需要重新配置(Y/n):")" -r row ;do
@@ -370,6 +373,22 @@ function main(){
                 case "$longArgKey" in
                     "help")
                         helpInit
+                        ;;
+                    "resetconfig")
+                        echo -n "$CONFIG_PATH"
+                        echo -n "$CONFIT_PROJECT_PATH"
+                        return 0
+                        ;;
+                    "setconfig")
+                        setConfigBaseInfo true
+                        setConfigParamCommitIdList true
+                        ;;
+                    "appendprojectconfig")
+                        setConfigBaseInfo
+                        setConfigParamCommitIdList
+                        ;;
+                    "debug")
+                        DEBUG=true
                         ;;
                     "commitid")
                         if [[ "${longArgKey}" == "" ]];then
