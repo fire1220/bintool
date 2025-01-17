@@ -17,14 +17,14 @@ configInit=$(cat <<!
 # URL=https://test-jenkins.xxxx.com
 #
 # # 【必须配置】当前文件夹和 pod name 的对应关系
-# POD_NAME_LIST=(
+# CONFIG_DIR_TO_JOBS_NAME_LIST=(
 #     wm-light-backend=k8s-test-php-backend-new
 #     wm-light-frontend=k8s-test-php-frontend-new
 # )
 #
 # # 【必须配置】当前文件夹和 jenkins 的发布参数的对应关系
 # # 会把 git 的 commit id 传入到该参数里
-# PARAM_COMMIT_ID_LIST=(
+# CONFIG_DIR_TO_PARAMS_NAME_LIST=(
 #     wm-backend=backend_version
 #     wm-backend=title
 #     wm-frontend=frontend_version
@@ -33,10 +33,9 @@ configInit=$(cat <<!
 !
 )
 
-CONFIG_DIR_PATH="$HOME/.config/jenkins"
-CONFIG_PATH="${CONFIG_DIR_PATH}/.jenkinsrc"
-# CONFIT_JSON_PATH="${CONFIG_DIR_PATH}/jenkins.json"
-CONFIT_PROJECT_PATH="${CONFIG_DIR_PATH}/.projectrc"
+declare -r CONFIG_DIR_PATH="$HOME/.config/jenkins"
+declare -r CONFIG_PATH="${CONFIG_DIR_PATH}/.jenkinsrc"
+declare -r CONFIT_PROJECT_PATH="${CONFIG_DIR_PATH}/.projectrc"
 
 declare -r DIR_NAME="$(basename "$(pwd)")"  # 当前目录名称
 
@@ -86,6 +85,7 @@ if [ ! -f "$CONFIG_PATH" ];then
 fi
 
 . "$CONFIG_PATH"
+. "$CONFIT_PROJECT_PATH"
 
 
 # /job/k8s-test-go-wm-light-practice-2/409/wfapi/describe/api/json
@@ -129,6 +129,7 @@ function setConfigParamCommitIdList(){
                 list+=("$v")
             fi
         done
+        read -ra closureReadNumberDataList <<< "${list[@]}"
         for k in "${!list[@]}"; do
             local idx=$((k+1))
             printf "%-3s %-30s\n" "${idx}" "${list[$k]}"
@@ -166,7 +167,6 @@ function setConfigParamCommitIdList(){
 
     declare -a configParamsList=()
     declare -a paramsList=()
-    declare -p closureReadNumberSelectUniq
     declare -a selectJobsList=()
     for k in "${!closureReadNumberSelectUniq[@]}";do
         jobName="${closureReadNumberDataList[$k]}"
@@ -178,7 +178,6 @@ function setConfigParamCommitIdList(){
         paramsListTemp="$(eval $(printf "$CURL_SRCIPT_JOB_CONFIG_JQ" "$jobName"))"
         declare -a paramsListAllTemp=()
         read -d '' -ra paramsListAllTemp <<< "${paramsList[@]}"
-        declare -p paramsListAllTemp
         while read -r row ;do
             if [[ " ${paramsListAllTemp[@]} " =~ " ${row} " ]];then
                 continue
@@ -195,7 +194,22 @@ function setConfigParamCommitIdList(){
     done
     declare -p selectJobsList
     declare -p selectParamsList
-    # CONFIT_PROJECT_PATH
+    for v in "${selectJobsList[@]}";do
+        local value="${DIR_NAME}=${v}"
+        if [[ " ${CONFIG_DIR_TO_JOBS_NAME_LIST[@]} " =~ " ${value} " ]];then
+            continue
+        fi
+        CONFIG_DIR_TO_JOBS_NAME_LIST+=("${value}")
+    done
+    for v in "${selectParamsList[@]}";do
+        local value="${DIR_NAME}=${v}"
+        if [[ " ${CONFIG_DIR_TO_PARAMS_NAME_LIST[@]} " =~ " ${value} " ]];then
+            continue
+        fi
+        CONFIG_DIR_TO_PARAMS_NAME_LIST+=("${value}")
+    done
+
+    echo "$(declare -p CONFIG_DIR_TO_JOBS_NAME_LIST && declare -p CONFIG_DIR_TO_PARAMS_NAME_LIST)" > "$CONFIT_PROJECT_PATH"
 }
 
 setConfigParamCommitIdList
@@ -208,7 +222,7 @@ function getConfigParamCommitIdList(){
         return 0
     fi
     declare -a list=()
-    for v in "${PARAM_COMMIT_ID_LIST[@]}";do
+    for v in "${CONFIG_DIR_TO_PARAMS_NAME_LIST[@]}";do
         local name="${v%%=*}"
         local value="${v#*=}"
         if [[ "$name" != "$dirName" ]];then
@@ -227,7 +241,7 @@ function getConfigPodNameList(){
     fi
 
     declare -a list=()
-    for v in "${POD_NAME_LIST[@]}";do
+    for v in "${CONFIG_DIR_TO_JOBS_NAME_LIST[@]}";do
         local name="${v%%=*}"
         local value="${v#*=}"
         if [[ "$name" != "$dirName" ]];then
