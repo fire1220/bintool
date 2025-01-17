@@ -22,22 +22,22 @@ function helpInit(){
             构建jenkins或查看已经构建的信息
 
         参数：
-            -h / --help                     帮助
-            -c / commitid  commit_id        构建Jenkins，commitId(默认选项)
-            --xxx=xxx                       构建jenkins时自定义传入参数，例如--restart=restart-0260
-            -d / details   [build_number]   查看发布详情
-                                                如果不传入[build_number]则会选择pod的最新发布的详情，等同于-l
-                                                参数格式：buildNumber 或 jobName/buildNumber
-                                                案例1：864
-                                                案例2：k8s-test-php-wm-light-backend-new/864
-                                                如果是buildNumber这种形式，则会进入配置的服务器列表，选择对应的服务器即可
-            -l / lastinfo                   查看最后发布的信息
-                                                可选参数格式：jobName(如果不传jobName则进入列表手动选择)
-                                                案例：k8s-test-php-wm-light-backend-new
-            debug                           开启调试模式
-            resetconfig                     重置所有配置
-            setconfig                       设置配置
-            appendprojectconfig             追加项目配置
+            -h / --help                         帮助
+            -c / --commitid  commit_id          构建Jenkins，commitId(默认选项)
+            --xxx=xxx                           构建jenkins时自定义传入参数，例如--restart=restart-0260
+            -d / --details   [build_number]     查看发布详情
+                                                    如果不传入[build_number]则会选择pod的最新发布的详情，等同于-l
+                                                    参数格式：buildNumber 或 jobName/buildNumber
+                                                    案例1：864
+                                                    案例2：k8s-test-php-wm-light-backend-new/864
+                                                    如果是buildNumber这种形式，则会进入配置的服务器列表，选择对应的服务器即可
+            -l / --lastinfo                     查看最后发布的信息
+                                                    可选参数格式：jobName(如果不传jobName则进入列表手动选择)
+                                                    案例：k8s-test-php-wm-light-backend-new
+            --debug                             开启调试模式
+            --resetconfig                       重置所有配置
+            --setconfig                         设置配置
+            --appendprojectconfig               追加项目配置
 
 !
     exit 0
