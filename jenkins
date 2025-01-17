@@ -133,7 +133,6 @@ function setConfigParamCommitIdList(){
     fi
     listAllRes="$(eval "$CURL_SRCIPT_JOBS_LIST_JQ")"
     local closureReadNumberSearch="$DIR_NAME"
-    echo "$listAllRes"
 
     read -d '' -ra closureReadNumberDataList <<< "$listAllRes"
     closureReadNumberReadStr="select num list(多个用空格分开):"
@@ -146,19 +145,33 @@ function setConfigParamCommitIdList(){
         fi
         closureReadNumberSelectUniq=()
         declare -a list=()
-        for v in "${closureReadNumberDataList[@]}";do
-            if [[ "$closureReadNumberSearch" == "" ]];then
-                list+=("$v")
-            elif [[ "$v" == *"${closureReadNumberSearch}"*  ]];then
-                list+=("$v")
+        while true;do
+            list=()
+            for v in "${closureReadNumberDataList[@]}";do
+                if [[ "$closureReadNumberSearch" == "" ]];then
+                    list+=("$v")
+                elif [[ "$v" == *"${closureReadNumberSearch}"*  ]];then
+                    list+=("$v")
+                fi
+            done
+            for k in "${!list[@]}"; do
+                local idx=$((k+1))
+                printf "%-3s %-30s\n" "${idx}" "${list[$k]}"
+            done
+
+            if [[ "$list" == "" ]];then
+                closureReadNumberReadStr="没有找到筛选到${closureReadNumberSearch}数据，输入*获取全部："
             fi
-        done
-        read -ra closureReadNumberDataList <<< "${list[@]}"
-        for k in "${!list[@]}"; do
-            local idx=$((k+1))
-            printf "%-3s %-30s\n" "${idx}" "${list[$k]}"
-        done
-        while read -p "$closureReadNumberReadStr" -r row;do
+
+            read -p "$closureReadNumberReadStr" -r row
+            if [[ "$row" == "" ]];then
+                continue
+            fi
+            if [[ "$row" == "*" ]];then
+                closureReadNumberSearch=""
+                continue
+            fi
+
             closureReadNumberSelectUniq=()
             if [[ "$row" =~ [[:space:]] ]];then
                 local selectListTemp
@@ -183,6 +196,7 @@ function setConfigParamCommitIdList(){
                 closureReadNumberSearch="$row"
             fi
         done
+        read -ra closureReadNumberDataList <<< "${list[@]}"
         closureReadNumberSearch=""
         closureReadNumberReadStr=""
     }
