@@ -270,6 +270,9 @@ function getConfigParamCommitIdList(){
         fi
         list+=("$value")
     done
+    if [[ "$list" == "" ]];then
+        return 10
+    fi
     echo "${list[@]}"
     return 0
 }
@@ -290,7 +293,7 @@ function getConfigPodNameList(){
         list+=("$value")
     done
     if [[ "$list" == "" ]];then
-        return 1
+        return 10
     fi
     echo "${list[@]}"
     return 0
@@ -414,7 +417,7 @@ function lastBuild(){
     declare -a podNameList=()
     declare configPodList=""
     configPodList="$(getConfigPodNameList "$DIR_NAME")" || {
-        setConfigParamCommitIdList
+        setConfigParamCommitIdList true
         configPodList="$(getConfigPodNameList "$DIR_NAME")"
     }
     if [[ "$configPodList" == "" ]];then
@@ -452,7 +455,7 @@ function getJobNameByRead(){
     declare -a podNameList=()
     declare configPodList=""
     configPodList="$(getConfigPodNameList "$DIR_NAME")" || {
-        setConfigParamCommitIdList
+        setConfigParamCommitIdList true
         configPodList="$(getConfigPodNameList "$DIR_NAME")"
     }
     if [[ "$configPodList" == "" ]];then
@@ -509,7 +512,7 @@ function details(){
     local i=0
     declare configPodList=""
     configPodList="$(getConfigPodNameList "$DIR_NAME")" || {
-        setConfigParamCommitIdList
+        setConfigParamCommitIdList true
         configPodList="$(getConfigPodNameList "$DIR_NAME")"
     }
     if [[ "$configPodList" == "" ]];then
@@ -552,15 +555,11 @@ function buildAndProgress(){
     fi
     declare configCommitIdList=""
     configCommitIdList="$(getConfigParamCommitIdList "$DIR_NAME")" || {
-        if [[ "$?" == "10" ]];then
-            echo "是否需要录入配置"
-        else
-            echo "获取配置失败"
-            return 10
-        fi
+        setConfigParamCommitIdList true
+        configCommitIdList="$(getConfigParamCommitIdList "$DIR_NAME")"
     }
     if [[ "$configCommitIdList" == "" ]];then
-        echo "没有找到对应配置"
+        echo "没有找到对应配置!"
         return 0
     fi
     read -ra configCommitIdList <<< "$configCommitIdList"
@@ -580,7 +579,7 @@ function buildAndProgress(){
     local locationUrlList=()
     declare configPodList=""
     configPodList="$(getConfigPodNameList "$DIR_NAME")" || {
-        setConfigParamCommitIdList
+        setConfigParamCommitIdList true
         configPodList="$(getConfigPodNameList "$DIR_NAME")"
     }
     if [[ "$configPodList" == "" ]];then
