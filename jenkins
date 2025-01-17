@@ -192,8 +192,6 @@ function setConfigBaseInfo(){
     done
     return 0
 }
-setConfigBaseInfo true
-exit 0
 
 # 添加修改配置文件
 function setConfigParamCommitIdList(){
@@ -440,10 +438,7 @@ function main(){
     done
     shift $(($OPTIND-1))
 
-    if [[ "$USERNAME" == "" ]] || [[ "$APP_TOKEN" == "" ]] || [[ "$URL" == ""  ]] ;then
-        echo "请先编辑配置文件：$CONFIG_PATH"
-        exit 0
-    fi
+    setConfigBaseInfo
 
     mainParam="$1"
 
