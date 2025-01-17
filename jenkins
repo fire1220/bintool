@@ -133,6 +133,7 @@ function setConfigParamCommitIdList(){
     fi
     listAllRes="$(eval "$CURL_SRCIPT_JOBS_LIST_JQ")"
     local closureReadNumberSearch="$DIR_NAME"
+    echo "$listAllRes"
 
     read -d '' -ra closureReadNumberDataList <<< "$listAllRes"
     closureReadNumberReadStr="select num list(多个用空格分开):"
