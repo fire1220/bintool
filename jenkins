@@ -130,7 +130,7 @@ function testNetConfig(){
             return 0
             ;;
         "401")
-            echo >&2 "配置参数错误,测试请求jenkins被拒绝"
+            echo >&2 "用户名或token错误,测试请求jenkins被拒绝"
             return 30
             ;;
         "301")
@@ -176,7 +176,7 @@ function setConfigBaseInfo(){
             echo "$(echo "# DEBUG=true";echo "# 用户名";declare -p USERNAME;echo "# URL";declare -p URL;echo "# APP Token";declare -p APP_TOKEN)" > "$CONFIG_PATH"
             break
         }
-        while read -p "${res} 是否需要重新配置(Y/n):" -r row ;do
+        while read -p "$(echo -e "${res}\033[33m➜\033[0m是否需要重新配置(Y/n):")" -r row ;do
             case "$row" in
                 Y|y|"")
                     break
