@@ -43,7 +43,6 @@ function helpInit(){
     exit 0
 }
 
-
 if [ ! -d "$CONFIG_DIR_PATH" ];then
     mkdir -p "$CONFIG_DIR_PATH"
 fi
@@ -423,6 +422,25 @@ function main(){
         esac
     done
     shift $(($OPTIND-1))
+
+    declare -a commandList=("jq")
+    declare isError=false
+    for v in "${commandList[@]}";do
+        type "$v" &>1 > /dev/null || {
+            cat <<!
+          $(echo -e "\033[31;1m➜\033[0m") 缺少 ${v} 命令
+            安装方法：
+                MacOS : brew install $v
+                Linux : yum install $v
+                Ubuntu: apt install $v
+!
+        echo ""
+        isError=true
+    }
+    done
+    if $isError ;then
+        return 1
+    fi
 
     setConfigBaseInfo
 
