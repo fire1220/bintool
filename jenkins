@@ -94,22 +94,106 @@ fi
 
 # /job/k8s-test-go-wm-light-practice-2/409/wfapi/describe/api/json
 
-declare -r CURL_SRCIPT_JOBS_LIST="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/api/json'"                                    # 所有jobs列表
-declare -r CURL_SRCIPT_JOB_CONFIG="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/api/json'"                              # 获取单个job的参数配置
-declare -r CURL_SCRIPT_BUILD="curl -i -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/buildWithParameters' %s"                # 构建
-declare -r CURL_SCRIPT_LAST_BUILD="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/lastBuild/api/json?pretty=true'"      # 获取最近构建的详情
-declare -r CURL_SCRIPT_DETAILS="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/api/json?pretty=true'"                   # 获取构建的详情
-declare -r CURL_SCRIPT_QUEUE_ITEM="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '%s' | jq '{task:.task, executable:.executable}'"    # 获取发布状态，只有发布时才可用，该地址是构建成功201后header头里的Location
-
-declare -r CURL_SCRIPT_LAST_BUILD_NUMBER="${CURL_SCRIPT_LAST_BUILD} | jq '.number'"
-declare -r CURL_SRCIPT_JOBS_LIST_JQ="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/api/json' | jq -r '.jobs[]|.name'"         # 所有jobs名称列表
-declare -r CURL_SRCIPT_JOB_CONFIG_JQ="${CURL_SRCIPT_JOB_CONFIG} |jq -r '.property[]|{parameterDefinitions}|select(.parameterDefinitions != null)|.parameterDefinitions[]|.name'" # 获取单个job的参数配置
+function curlUrlInit(){
+    CURL_SRCIPT_JOBS_HEAD="curl -I -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/api/json'"                                 # 只打印响应头，用于测试配置
+    CURL_SRCIPT_JOBS_LIST="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/api/json'"                                    # 所有jobs列表
+    CURL_SRCIPT_JOB_CONFIG="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/api/json'"                            # 获取单个job的参数配置
+    CURL_SCRIPT_BUILD="curl -I -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/buildWithParameters' %s"                # 构建
+    CURL_SCRIPT_LAST_BUILD="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/lastBuild/api/json?pretty=true'"      # 获取最近构建的详情
+    CURL_SCRIPT_DETAILS="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/api/json?pretty=true'"                   # 获取构建的详情
+    CURL_SCRIPT_QUEUE_ITEM="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '%s' | jq '{task:.task, executable:.executable}'"    # 获取发布状态，只有发布时才可用，该地址是构建成功201后header头里的Location
+    # 组合命令
+    CURL_SCRIPT_LAST_BUILD_NUMBER="${CURL_SCRIPT_LAST_BUILD} | jq '.number'"
+    CURL_SRCIPT_JOBS_LIST_JQ="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/api/json' | jq -r '.jobs[]|.name'"         # 所有jobs名称列表
+    CURL_SRCIPT_JOB_CONFIG_JQ="${CURL_SRCIPT_JOB_CONFIG} |jq -r '.property[]|{parameterDefinitions}|select(.parameterDefinitions != null)|.parameterDefinitions[]|.name'" # 获取单个job的参数配置
+}
+curlUrlInit
 
 # 在配置列表中获取pod name
 declare READ_CONFIG_JOB_NAME=""
 
 # 全局参数变量列表
 declare -a ParamList=()
+
+function testNetConfig(){
+    res="$(eval "$CURL_SRCIPT_JOBS_HEAD")" || {
+        echo >&2 "CURL请求失败 $res"
+        return 10
+    }
+    if [[ "$res" == "" ]];then
+        echo >&2 "配置参数错误,测试请求jenkins没有任何返回数据"
+        return 20
+    fi
+    read -d '' -r protocol code describe <<< "$res"
+    case "$code" in
+        "200")
+            return 0
+            ;;
+        "401")
+            echo >&2 "配置参数错误,测试请求jenkins被拒绝"
+            return 30
+            ;;
+        "301")
+            echo >&2 "配置参数错误,测试请求jenkins,改地址已经被永久重定向 $(echo "$res"|grep "^Location:")"
+            return 30
+            ;;
+        *)
+        echo "$res"
+            echo >&2 "配置参数错误,测试请求jenkins失败"
+            return 40
+            ;;
+    esac
+    return 0
+}
+
+function setConfigBaseInfo(){
+    forcsSet="$1"
+    if [[ "$forcsSet" == "" ]] || [[ "$forcsSet" != "true" ]];then
+        forcsSet=false
+    fi
+    if ! $forcsSet ;then
+        if [[ "$USERNAME" != "" ]] && [[ "$APP_TOKEN" != "" ]] && [[ "$URL" != ""  ]] ;then
+            return 0
+        fi
+    fi
+    declare -a inputList=("用户名(jenkins的登录名):" "域名(kenkins的访问域名):" "app token(设置位置：点击右上角用户名->设置->API Token->添加新Token):")
+    declare -a inputValueList=()
+    while true;do
+        for k in "${!inputList[@]}";do
+            while read -p "${inputList[$k]}" -r row;do
+                if [[ "$row" == "" ]];then
+                    continue
+                fi
+                inputValueList[$k]="$row"
+                break
+            done
+        done
+        USERNAME="${inputValueList[0]}"
+        URL="${inputValueList[1]}"
+        APP_TOKEN="${inputValueList[2]}"
+        curlUrlInit
+        res="$(testNetConfig)" && {
+            echo "$(echo "# DEBUG=true";echo "# 用户名";declare -p USERNAME;echo "# URL";declare -p URL;echo "# APP Token";declare -p APP_TOKEN)" > "$CONFIG_PATH"
+            break
+        }
+        while read -p "${res} 是否需要重新配置(Y/n):" -r row ;do
+            case "$row" in
+                Y|y|"")
+                    break
+                    ;;
+                N|n)
+                    break 2
+                    ;;
+                *)
+                    continue
+                    ;;
+            esac
+        done
+    done
+    return 0
+}
+setConfigBaseInfo true
+exit 0
 
 # 添加修改配置文件
 function setConfigParamCommitIdList(){
