@@ -861,7 +861,6 @@ function progressPod() {
     declare -a podAndNumberList=()
     declare skipLineNumber=0
     for v in {1..500};do
-        local strTemp=""
         declare -a listPrintData=()
         local isContinue=false
         v2Index=0
@@ -899,22 +898,12 @@ function progressPod() {
                 if $DEBUG ;then
                     progressRequest[$v2Index]="$execStr"
                     listPrintData+=("${execStr}")
-                    # if [[ "$strTemp" == "" ]];then
-                    #     strTemp="${execStr}"
-                    # else
-                    #     strTemp="${strTemp}\n\033[2K${execStr}"
-                    # fi
                 fi
                 local runResporse="$(eval "$execStr")"
                 strTempCurrent=$(progressFmt "$runResporse" "${buildBeginTimeList[$v2Index]}" "${podAndNumber}" "$v")
                 statusProgressFmt="$?"
             elif $DEBUG ;then
                 listPrintData+=("${execStr}")
-                # if [[ "$strTemp" == "" ]];then
-                #     strTemp="${execStr}"
-                # else
-                #     strTemp="${strTemp}\n\033[2K${execStr}"
-                # fi
             fi
             local isBreak=false
             case "$statusProgressFmt" in
@@ -934,23 +923,10 @@ function progressPod() {
             esac
             v2Index=$(($v2Index+1))
             listPrintData+=("${strTempCurrent}")
-            # if [[ "$strTemp" == "" ]];then
-            #     strTemp="${strTempCurrent}"
-            # else
-            #     strTemp="${strTemp}\n\033[2K${strTempCurrent}"
-            # fi
             if $isBreak ;then
                 break
             fi
         done
-        # IFS=$'\n' read -d '' -ra rowList <<< "$(echo -e $strTemp)"
-        # local skipLineNumberTemp=""
-        # if (($skipLineNumber>0));then
-        #     skipLineNumberTemp="\033[${skipLineNumber}A"
-        # fi
-        # printf "${skipLineNumberTemp}\r\033[2K${strTemp}"
-        # skipLineNumber=$((${#rowList[@]} - 1))
-
 
         local skipLineNumberTemp=""
         if (($skipLineNumber>0));then
