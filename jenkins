@@ -862,6 +862,7 @@ function progressPod() {
     declare skipLineNumber=0
     for v in {1..500};do
         local strTemp=""
+        declare -a listPrintData=()
         local isContinue=false
         v2Index=0
         for v2 in ${progressPodList[@]};do
@@ -897,21 +898,23 @@ function progressPod() {
                 execStr=$(printf "$CURL_SCRIPT_DETAILS" "${podAndNumber}")
                 if $DEBUG ;then
                     progressRequest[$v2Index]="$execStr"
-                    if [[ "$strTemp" == "" ]];then
-                        strTemp="${execStr}"
-                    else
-                        strTemp="${strTemp}\n\033[2K${execStr}"
-                    fi
+                    listPrintData+=("${execStr}")
+                    # if [[ "$strTemp" == "" ]];then
+                    #     strTemp="${execStr}"
+                    # else
+                    #     strTemp="${strTemp}\n\033[2K${execStr}"
+                    # fi
                 fi
                 local runResporse="$(eval "$execStr")"
                 strTempCurrent=$(progressFmt "$runResporse" "${buildBeginTimeList[$v2Index]}" "${podAndNumber}" "$v")
                 statusProgressFmt="$?"
             elif $DEBUG ;then
-                if [[ "$strTemp" == "" ]];then
-                    strTemp="${execStr}"
-                else
-                    strTemp="${strTemp}\n\033[2K${execStr}"
-                fi
+                listPrintData+=("${execStr}")
+                # if [[ "$strTemp" == "" ]];then
+                #     strTemp="${execStr}"
+                # else
+                #     strTemp="${strTemp}\n\033[2K${execStr}"
+                # fi
             fi
             local isBreak=false
             case "$statusProgressFmt" in
@@ -930,22 +933,39 @@ function progressPod() {
                     ;;
             esac
             v2Index=$(($v2Index+1))
-            if [[ "$strTemp" == "" ]];then
-                strTemp="${strTempCurrent}"
-            else
-                strTemp="${strTemp}\n\033[2K${strTempCurrent}"
-            fi
+            listPrintData+=("${strTempCurrent}")
+            # if [[ "$strTemp" == "" ]];then
+            #     strTemp="${strTempCurrent}"
+            # else
+            #     strTemp="${strTemp}\n\033[2K${strTempCurrent}"
+            # fi
             if $isBreak ;then
                 break
             fi
         done
-        IFS=$'\n' read -d '' -ra rowList <<< "$(echo -e $strTemp)"
+        # IFS=$'\n' read -d '' -ra rowList <<< "$(echo -e $strTemp)"
+        # local skipLineNumberTemp=""
+        # if (($skipLineNumber>0));then
+        #     skipLineNumberTemp="\033[${skipLineNumber}A"
+        # fi
+        # printf "${skipLineNumberTemp}\r\033[2K${strTemp}"
+        # skipLineNumber=$((${#rowList[@]} - 1))
+
+
         local skipLineNumberTemp=""
         if (($skipLineNumber>0));then
             skipLineNumberTemp="\033[${skipLineNumber}A"
         fi
-        printf "${skipLineNumberTemp}\r\033[2K${strTemp}"
-        skipLineNumber=$((${#rowList[@]} - 1))
+        skipLineNumber=$((${#listPrintData[@]}-1))
+        local tempPrintStr=""
+        for k in "${!listPrintData[@]}";do
+            local n=""
+            if (($k>0));then
+                n="\n"
+            fi
+            tempPrintStr="${tempPrintStr}${n}\r\033[2K${listPrintData[$k]}"
+        done
+        printf "${skipLineNumberTemp}${tempPrintStr}"
 
         if [[ "${#progressPodList[@]}" == "${#progressRet[@]}" ]];then
             break
