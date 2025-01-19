@@ -12,9 +12,8 @@ declare -r SCRIPT_EXEC_TIME="$(date +'%s')"
 # 否:采用轮询build返回的header的Location地址
 declare -r IS_LAST_GET_NUMBER=false
 
-if [[ "$DEBUG" != "true" ]] || [[ "$DEBUG" != "false" ]];then
-    DEBUG=false
-fi
+declare DEBUG=false
+declare IS_033_A=false # true：采用\033[A的方式定位，false：采用 \033[s、\033[u的方式定位
 
 function helpInit(){
     cat <<!
@@ -838,7 +837,7 @@ function loadingStr(){
     for ((i=0;i<=($idx%4);i++)) ;do
         point="${pointList[$i]}"
     done
-    echo "$point"
+    echo "${point} "
     return 0
 }
 
@@ -928,20 +927,33 @@ function progressPod() {
             fi
         done
 
-        local skipLineNumberTemp=""
-        if (($skipLineNumber>0));then
-            skipLineNumberTemp="\033[${skipLineNumber}A"
+        if $IS_033_A ;then
+            local skipLineNumberTemp=""
+            if (($skipLineNumber>0));then
+                skipLineNumberTemp="\033[${skipLineNumber}A"
+            fi
+            skipLineNumber=$((${#listPrintData[@]}-1))
         fi
-        skipLineNumber=$((${#listPrintData[@]}-1))
+
         local tempPrintStr=""
         for k in "${!listPrintData[@]}";do
             local n=""
             if (($k>0));then
                 n="\n"
             fi
-            tempPrintStr="${tempPrintStr}${n}\r\033[2K${listPrintData[$k]}"
+            # tempPrintStr="${tempPrintStr}${n}\r\033[2K${listPrintData[$k]}"
+            tempPrintStr="${tempPrintStr}${n}\r\033[J${listPrintData[$k]}"
         done
-        printf "${skipLineNumberTemp}${tempPrintStr}"
+
+        if $IS_033_A ;then
+            printf "${skipLineNumberTemp}${tempPrintStr}"
+        else
+            local suffix="\033[u"
+            if [[ "${#progressPodList[@]}" == "${#progressRet[@]}" ]];then
+                suffix="\033[s\033[u"
+            fi
+            printf "\033[s${tempPrintStr}${suffix}"
+        fi
 
         if [[ "${#progressPodList[@]}" == "${#progressRet[@]}" ]];then
             break
