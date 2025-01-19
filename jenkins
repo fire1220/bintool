@@ -13,7 +13,7 @@ declare -r SCRIPT_EXEC_TIME="$(date +'%s')"
 declare -r IS_LAST_GET_NUMBER=false
 
 # true：采用\033[A的方式定位，false：采用 \033[s、\033[u的方式定位
-declare -r IS_033_A=false
+declare IS_033_A=true
 
 declare DEBUG=false
 
@@ -391,6 +391,7 @@ function main(){
                         ;;
                     "debug")
                         DEBUG=true
+                        IS_033_A=false
                         ;;
                     "commitid")
                         if [[ "${longArgKey}" == "" ]];then
@@ -423,6 +424,12 @@ function main(){
         esac
     done
     shift $(($OPTIND-1))
+
+
+    if ! $IS_033_A ;then
+        # trap 'reset -I' EXIT
+        reset
+    fi
 
     declare -a commandList=("jq")
     declare isError=false
@@ -974,10 +981,5 @@ function progressPod() {
     echo ""
     return 0
 }
-
-if ! $IS_033_A ;then
-    trap 'reset -I' EXIT
-    reset -I
-fi
 
 main "$@"
