@@ -976,7 +976,6 @@ function progressPod() {
 }
 
 if ! $IS_033_A ;then
-    # trap 'printf "\n\n";reset -I' EXIT
     trap 'reset -I' EXIT
     reset -I
 fi
