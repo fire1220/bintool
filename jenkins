@@ -12,8 +12,10 @@ declare -r SCRIPT_EXEC_TIME="$(date +'%s')"
 # 否:采用轮询build返回的header的Location地址
 declare -r IS_LAST_GET_NUMBER=false
 
+# true：采用\033[A的方式定位，false：采用 \033[s、\033[u的方式定位
+declare -r IS_033_A=true
+
 declare DEBUG=false
-declare IS_033_A=false # true：采用\033[A的方式定位，false：采用 \033[s、\033[u的方式定位
 
 function helpInit(){
     cat <<!
@@ -946,7 +948,7 @@ function progressPod() {
         done
 
         if $IS_033_A ;then
-            printf "${skipLineNumberTemp}${tempPrintStr}"
+            printf "${skipLineNumberTemp}\r\033[J${tempPrintStr}"
         else
             local suffix="\033[u"
             if [[ "${#progressPodList[@]}" == "${#progressRet[@]}" ]];then
