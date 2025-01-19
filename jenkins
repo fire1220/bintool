@@ -13,7 +13,7 @@ declare -r SCRIPT_EXEC_TIME="$(date +'%s')"
 declare -r IS_LAST_GET_NUMBER=false
 
 # true：采用\033[A的方式定位，false：采用 \033[s、\033[u的方式定位
-declare -r IS_033_A=true
+declare -r IS_033_A=false
 
 declare DEBUG=false
 
@@ -973,5 +973,7 @@ function progressPod() {
     echo ""
     return 0
 }
+trap 'printf "\n\n";reset -I' EXIT
+reset -I
 
 main "$@"
