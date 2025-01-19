@@ -955,6 +955,7 @@ function progressPod() {
                 suffix="\033[s\033[u"
             fi
             printf "\r\033[s\033[J${tempPrintStr}${suffix}"
+            # echo "\r\033[s\033[J${tempPrintStr}${suffix}"
         fi
 
         if [[ "${#progressPodList[@]}" == "${#progressRet[@]}" ]];then
@@ -973,7 +974,11 @@ function progressPod() {
     echo ""
     return 0
 }
-trap 'printf "\n\n";reset -I' EXIT
-reset -I
+
+if ! $IS_033_A ;then
+    # trap 'printf "\n\n";reset -I' EXIT
+    trap 'reset -I' EXIT
+    reset -I
+fi
 
 main "$@"
