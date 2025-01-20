@@ -292,7 +292,7 @@ function setConfigParamCommitIdList(){
         fi
         CONFIG_DIR_TO_PARAMS_NAME_LIST+=("${value}")
     done
-    echo "$(echo "# 当前目录和jobs对应关系";declare -p CONFIG_DIR_TO_JOBS_NAME_LIST;echo "# commit id 作为参数的值";declare -p CONFIG_DIR_TO_PARAMS_NAME_LIST)" > "$CONFIT_PROJECT_PATH"
+    echo "$(echo "# 当前目录和jobs对应关系";declare -p CONFIG_DIR_TO_JOBS_NAME_LIST;echo "# 值是 commit id 的jenkins参数";declare -p CONFIG_DIR_TO_PARAMS_NAME_LIST)" > "$CONFIT_PROJECT_PATH"
 }
 
 function getConfigParamCommitIdList(){
@@ -355,7 +355,8 @@ function getConfigInfo(){
         jobsNameList+=("$name")
     done
     for v in "${jobsNameList[@]}";do
-        printf "\t%s\n" "${v}"
+        printf "\t目录名  : %s\n" "${v}"
+        printf "\t参数列表:%s\n"
         for v2 in "${CONFIG_DIR_TO_JOBS_NAME_LIST[@]}";do
             local name="${v2%%=*}"
             local value=""
@@ -363,13 +364,13 @@ function getConfigInfo(){
                 value="${v2#*=}"
             fi
             if [[ "$name" == "$v" ]];then
-                printf "\t\t%s\n" "${value}"
+                printf "\t\t➜ %s\n" "${value}"
             fi
         done
         echo ""
     done
     echo ""
-    printf "commit id 作为参数的值:\n"
+    printf "值是 commit id 的jenkins参数:\n"
     declare -a paramsNameList=()
     for v in "${CONFIG_DIR_TO_PARAMS_NAME_LIST[@]}";do
         local name="${v%%=*}"
@@ -379,7 +380,8 @@ function getConfigInfo(){
         paramsNameList+=("${name}")
     done
     for v in "${paramsNameList[@]}";do
-        printf "\t%s\n" "${v}"
+        printf "\t目录名  : %s\n" "${v}"
+        printf "\t参数列表:%s\n"
         for v2 in "${CONFIG_DIR_TO_PARAMS_NAME_LIST[@]}";do
             local name="${v2%%=*}"
             local value=""
@@ -387,7 +389,7 @@ function getConfigInfo(){
                 value="${v2#*=}"
             fi
             if [[ "$name" == "$v" ]];then
-                printf "\t\t%s\n" "${value}"
+                printf "\t\t➜ %s\n" "${value}"
             fi
         done
         echo ""
