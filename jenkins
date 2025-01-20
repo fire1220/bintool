@@ -456,7 +456,6 @@ function main(){
 
     curlUrlInit
 
-
     if ! $IS_033_A ;then
         # trap 'reset -I' EXIT
         reset
@@ -465,7 +464,7 @@ function main(){
     declare -a commandList=("jq")
     declare isError=false
     for v in "${commandList[@]}";do
-        type "$v" &>1 > /dev/null || {
+        type "$v" &> /dev/null || {
             cat <<!
           $(echo -e "\033[31;1m➜\033[0m") 缺少 ${v} 命令
             安装方法：
