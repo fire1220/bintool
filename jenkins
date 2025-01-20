@@ -46,6 +46,7 @@ function helpInit(){
             --setconfig                         设置配置
             --appendprojectconfig               追加项目配置
             --getconfig                         查看配置
+            --getconfiglist                     获取配置列表
 
 !
     exit 0
@@ -338,6 +339,12 @@ function getConfigPodNameList(){
     return 0
 }
 
+# 获取配置的列表
+function getConfigListInfo(){
+    ls "$CONFIG_DIR_PATH"
+    return 0
+}
+
 # 打印配置信息
 function getConfigInfo(){
     echo ""
@@ -454,6 +461,10 @@ function main(){
                         ;;
                     "getconfig")
                         IS_GET_CONFIG=true
+                        ;;
+                    "getconfiglist")
+                        getConfigListInfo
+                        return 0
                         ;;
                     "debug")
                         DEBUG=true
