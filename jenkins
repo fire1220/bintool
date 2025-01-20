@@ -63,7 +63,6 @@ function curlUrlInit(){
     CURL_SRCIPT_JOBS_LIST_JQ="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/api/json' | jq -r '.jobs[]|.name'"         # 所有jobs名称列表
     CURL_SRCIPT_JOB_CONFIG_JQ="${CURL_SRCIPT_JOB_CONFIG} |jq -r '.property[]|{parameterDefinitions}|select(.parameterDefinitions != null)|.parameterDefinitions[]|.name'" # 获取单个job的参数配置
 }
-curlUrlInit
 
 # 在配置列表中获取pod name
 declare READ_CONFIG_JOB_NAME=""
@@ -455,6 +454,8 @@ function main(){
     . "$CONFIG_PATH"
     . "$CONFIT_PROJECT_PATH"
 
+    curlUrlInit
+
 
     if ! $IS_033_A ;then
         # trap 'reset -I' EXIT
@@ -561,6 +562,9 @@ function lastBuild(){
             continue
         fi
         execStr=$(printf "$CURL_SCRIPT_LAST_BUILD" "$jobName")
+        if $DEBUG ;then
+            echo "$execStr"
+        fi
         eval "$execStr"
         echo ""
         return 0
