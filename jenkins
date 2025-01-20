@@ -353,7 +353,6 @@ function getConfigInfo(){
             continue
         fi
         jobsNameList+=("$name")
-        # printf "\t%s\n" "${v}"
     done
     for v in "${jobsNameList[@]}";do
         printf "\t%s\n" "${v}"
