@@ -17,8 +17,8 @@ declare CONFIT_PROJECT_PATH="${CONFIG_DIR_PATH}/${ServerName}/${CONFIG_PROJECT_N
 
 # true：采用\033[A的方式定位，false：采用 \033[s、\033[u的方式定位
 declare IS_033_A=true
-
-declare DEBUG=false
+declare DEBUG=false             # 调试模式
+declare IS_GET_CONFIG=false     # 打印配置信息
 
 function helpInit(){
     cat <<!
@@ -45,6 +45,7 @@ function helpInit(){
             --resetconfig                       重置所有配置
             --setconfig                         设置配置
             --appendprojectconfig               追加项目配置
+            --getconfig                         查看配置
 
 !
     exit 0
@@ -337,6 +338,63 @@ function getConfigPodNameList(){
     return 0
 }
 
+function getConfigInfo(){
+    echo ""
+    printf "%-13s: %s\n" "用户名" "${USERNAME}"
+    printf "%-12s: %s\n" "域名" "${URL}"
+    printf "%-10s: %s\n" "APP Token" "${APP_TOKEN}"
+    echo ""
+    printf "当前目录和jobs对应关系:\n" 
+    declare -a jobsNameList=()
+    for v in "${CONFIG_DIR_TO_JOBS_NAME_LIST[@]}";do
+        local name="${v%%=*}"
+        if [[ " ${jobsNameList[@]} " =~ " ${name} " ]];then
+            continue
+        fi
+        jobsNameList+=("$name")
+        # printf "\t%s\n" "${v}"
+    done
+    for v in "${jobsNameList[@]}";do
+        printf "\t%s\n" "${v}"
+        for v2 in "${CONFIG_DIR_TO_JOBS_NAME_LIST[@]}";do
+            local name="${v2%%=*}"
+            local value=""
+            if [[ "$v2" =~ = ]];then
+                value="${v2#*=}"
+            fi
+            if [[ "$name" == "$v" ]];then
+                printf "\t\t%s\n" "${value}"
+            fi
+        done
+        echo ""
+    done
+    echo ""
+    printf "commit id 作为参数的值:\n"
+    declare -a paramsNameList=()
+    for v in "${CONFIG_DIR_TO_PARAMS_NAME_LIST[@]}";do
+        local name="${v%%=*}"
+        if [[ " ${paramsNameList[@]} " =~ " ${name} " ]];then
+            continue
+        fi
+        paramsNameList+=("${name}")
+    done
+    for v in "${paramsNameList[@]}";do
+        printf "\t%s\n" "${v}"
+        for v2 in "${CONFIG_DIR_TO_PARAMS_NAME_LIST[@]}";do
+            local name="${v2%%=*}"
+            local value=""
+            if [[ "$v2" =~ = ]];then
+                value="${v2#*=}"
+            fi
+            if [[ "$name" == "$v" ]];then
+                printf "\t\t%s\n" "${value}"
+            fi
+        done
+        echo ""
+    done
+    echo ""
+}
+
 function main(){
     local mainParam=""
     local isDetails=false
@@ -391,6 +449,9 @@ function main(){
                         setConfigBaseInfo
                         setConfigParamCommitIdList
                         return 0
+                        ;;
+                    "getconfig")
+                        IS_GET_CONFIG=true
                         ;;
                     "debug")
                         DEBUG=true
@@ -457,6 +518,11 @@ function main(){
     . "$CONFIT_PROJECT_PATH"
 
     curlUrlInit
+
+    if $IS_GET_CONFIG ;then
+        getConfigInfo
+        return 0
+    fi
 
     if ! $IS_033_A ;then
         # trap 'reset -I' EXIT
