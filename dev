@@ -10,7 +10,7 @@ function helpInfo(){
         参数：
             -s / --self         只提交到当前分支，不进行切换分支
             -j / --jenkins      把commit_id作为参数,传递给jenkins命令
-            --jenkins-xxx=xxx   把xxx=xxx作为参数,传递给jenkins命令,例如：--jenkins-restart=restart-0259
+            --jenkins_xxx=xxx   把xxx=xxx作为参数,传递给jenkins命令,例如：--jenkins_restart=restart-0259
             CommitInfo          提交的git commit 信息
 
         说明：
@@ -45,8 +45,8 @@ while getopts ":-:jsh" opt;do
             if [[ "$OPTARG" =~ = ]];then
                 case "$argKeyLong" in
                     *)
-                        if [[ "$argKeyLong" =~ ^jenkins- ]];then
-                            JenkinsParams+=("--${OPTARG#jenkins-}")
+                        if [[ "$argKeyLong" =~ ^jenkins_ ]];then
+                            JenkinsParams+=("--${OPTARG#jenkins_}")
                         fi
                         ;;
                 esac
@@ -63,9 +63,6 @@ while getopts ":-:jsh" opt;do
                         IsNoCheckout=true
                         ;;
                     *)
-                        if [[ "$argKeyLong" =~ ^jenkins- ]];then
-                            jenkinsParam=
-                        fi
                         ;;
                 esac
                 continue
