@@ -338,6 +338,7 @@ function getConfigPodNameList(){
     return 0
 }
 
+# 打印配置信息
 function getConfigInfo(){
     echo ""
     printf "%-13s: %s\n" "用户名" "${USERNAME}"
