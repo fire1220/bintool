@@ -1,16 +1,19 @@
 #!/bin/bash
 
-declare -r CONFIG_DIR_PATH="$HOME/.config/jenkins"
-declare -r CONFIG_PATH="${CONFIG_DIR_PATH}/.jenkinsrc"
-declare -r CONFIT_PROJECT_PATH="${CONFIG_DIR_PATH}/.projectrc"
-
 declare -r DIR_NAME="$(basename "$(pwd)")"  # 当前目录名称
-
-declare -r SCRIPT_EXEC_TIME="$(date +'%s')"
+declare -r SCRIPT_EXEC_TIME="$(date +'%s')" # 脚本执行开始时间
 
 # 是:采用获取最后一个发布数据，如果最后一个发布数据不是最新的，则重复尝试
 # 否:采用轮询build返回的header的Location地址
 declare -r IS_LAST_GET_NUMBER=false
+
+declare -r CONFIG_DIR_PATH="$HOME/.config/jenkins"  # 配置文件目录
+declare -r CONFIG_JENKINS_NAME="jenkins.rc"         # 配置文件名称，存放账户信息
+declare -r CONFIG_PROJECT_NAME="project.rc"         # 配置文件名称，存放项目信息
+
+declare ServerName="default"                                                              # 默认配置目录名称
+declare CONFIG_PATH="${CONFIG_DIR_PATH}/${ServerName}/${CONFIG_JENKINS_NAME}"             # 配置文件，存放账户信息
+declare CONFIT_PROJECT_PATH="${CONFIG_DIR_PATH}/${ServerName}/${CONFIG_PROJECT_NAME}"     # 配置文件，存放项目信息
 
 # true：采用\033[A的方式定位，false：采用 \033[s、\033[u的方式定位
 declare IS_033_A=true
@@ -24,7 +27,8 @@ function helpInit(){
 
         参数：
             -h / --help                         帮助
-            -c / --commitid  commit_id          构建Jenkins，commitId(默认选项)
+            -s / --servername name              指定服务配置名称
+            -c / --commitid   commit_id         构建Jenkins，commitId(默认选项)
             --xxx=xxx                           构建jenkins时自定义传入参数，例如--restart=restart-0260
             -d / --details   [build_number]     查看发布详情
                                                     如果不传入[build_number]则会选择pod的最新发布的详情，等同于-l
@@ -43,21 +47,6 @@ function helpInit(){
 !
     exit 0
 }
-
-if [ ! -d "$CONFIG_DIR_PATH" ];then
-    mkdir -p "$CONFIG_DIR_PATH"
-fi
-
-if [ ! -f "$CONFIG_PATH" ];then
-    touch "$CONFIG_PATH"
-fi
-
-if [ ! -f "$CONFIT_PROJECT_PATH" ];then
-    touch "$CONFIT_PROJECT_PATH"
-fi
-
-. "$CONFIG_PATH"
-. "$CONFIT_PROJECT_PATH"
 
 # /job/k8s-test-go-wm-light-practice-2/409/wfapi/describe/api/json
 
@@ -353,10 +342,20 @@ function main(){
     local isLastBuild=false
     local commitId=""
     OPTIND=1
-    while getopts ':c:-:hdl' opt;do
+    while getopts ':c:s:-:hdl' opt;do
         case "$opt" in
             c)
                 commitId="$OPTARG"
+                ;;
+            s)
+                if [[ "$OPTARG" == "" ]];then
+                    echo "param --${OPTARG} 的值不正确，值应该是配置名称,并且只能是字母或数字"
+                    return 1
+                elif ! [[ "$OPTARG" =~ ^[a-zA-Z0-9]+$ ]];then
+                    echo "param --${OPTARG} 的值不正确，只能是字母或数字"
+                    return 1
+                fi
+                ServerName="$OPTARG"
                 ;;
             h)
                 helpInit
@@ -369,7 +368,10 @@ function main(){
                 ;;
             -)
                 local longArgKey="${OPTARG%%=*}"
-                local longArgVal="${OPTARG#*=}"
+                local longArgVal=""
+                if [[ "$OPTARG" =~ = ]];then
+                    longArgVal="${OPTARG#*=}"
+                fi
                 case "$longArgKey" in
                     "help")
                         helpInit
@@ -401,7 +403,7 @@ function main(){
                         commitId="$longArgVal"
                         ;;
                     "details")
-                        if [[ "$longArgVal" == "details" ]] || [[ "$longArgVal" == "" ]] || [[ "$longArgVal" == "true" ]];then
+                        if [[ "$longArgVal" == "" ]] || [[ "$longArgVal" == "true" ]];then
                             isDetails=true
                         else
                             echo "param --${longArgKey} 的值不正确，值应该是空或者true"
@@ -409,12 +411,22 @@ function main(){
                         fi
                         ;;
                     "lastinfo")
-                        if [[ "$longArgVal" == "lastinfo" ]] || [[ "$longArgVal" == "" ]] || [[ "$longArgVal" == "true" ]];then
+                        if [[ "$longArgVal" == "" ]] || [[ "$longArgVal" == "true" ]];then
                             isLastBuild=true
                         else
                             echo "param --${longArgKey} 的值不正确，值应该是空或者true"
                             exit 1
                         fi
+                        ;;
+                    "servername")
+                        if [[ "$longArgVal" == "" ]];then
+                            echo "param --${longArgKey} 的值不正确，值应该是配置名称,并且只能是字母或数字"
+                            return 1
+                        elif ! [[ "$longArgVal" =~ ^[a-zA-Z0-9]+$ ]];then
+                            echo "param --${longArgKey} 的值不正确，只能是字母或数字"
+                            return 1
+                        fi
+                        ServerName="$longArgVal"
                         ;;
                     *)
                         ParamList+=("$OPTARG")
@@ -424,6 +436,24 @@ function main(){
         esac
     done
     shift $(($OPTIND-1))
+
+    CONFIG_PATH="${CONFIG_DIR_PATH}/${ServerName}/${CONFIG_JENKINS_NAME}"             # 配置文件，存放账户信息
+    CONFIT_PROJECT_PATH="${CONFIG_DIR_PATH}/${ServerName}/${CONFIG_PROJECT_NAME}"     # 配置文件，存放项目信息
+
+    if [ ! -d "${CONFIG_DIR_PATH}/${ServerName}" ];then
+        mkdir -p "${CONFIG_DIR_PATH}/${ServerName}"
+    fi
+
+    if [ ! -f "$CONFIG_PATH" ];then
+        touch "$CONFIG_PATH"
+    fi
+
+    if [ ! -f "$CONFIT_PROJECT_PATH" ];then
+        touch "$CONFIT_PROJECT_PATH"
+    fi
+
+    . "$CONFIG_PATH"
+    . "$CONFIT_PROJECT_PATH"
 
 
     if ! $IS_033_A ;then
