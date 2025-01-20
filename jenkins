@@ -22,12 +22,14 @@ declare DEBUG=false
 
 function helpInit(){
     cat <<!
-        command [-cd] commitId
+        command [-cdhsl] commitId
             构建jenkins或查看已经构建的信息
+
+        案例:command "cfdaa8"
 
         参数：
             -h / --help                         帮助
-            -s / --servername name              指定服务配置名称
+            -s / --servername name              指定链接服务的配置名称
             -c / --commitid   commit_id         构建Jenkins，commitId(默认选项)
             --xxx=xxx                           构建jenkins时自定义传入参数，例如--restart=restart-0260
             -d / --details   [build_number]     查看发布详情
@@ -520,6 +522,9 @@ function main(){
 
     if [[ "$commitId" == "" ]];then
         commitId="$mainParam"
+    fi
+    if [[ "$commitId" == "" ]];then
+        helpInit
     fi
     buildAndProgress "$commitId"
 }
