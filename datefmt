@@ -1,0 +1,44 @@
+#!/bin/bash
+
+function helpInfo(){
+    cat <<!
+        command 
+            格式化时间格式，把 m月d日 格式化成 m-d 的格式
+
+!
+}
+
+function mouthDay(){
+    (
+        monthDelimiter="$1"
+        dayDelimiter="$2"
+        while read -r dateStr;do
+            m="月"
+            dayTemp="${dateStr#*${monthDelimiter}}"
+            day="${dayTemp%%${dayDelimiter}*}"
+            month="${dateStr%%${monthDelimiter}*}"
+            if [[ "$day" =~ ^[0-9]+$ ]] && [[ "$month" =~ ^[0-9]+$ ]];then
+                printf "%s,%02s-%02s\n" "$dateStr" "${month}" "${day}"
+            fi
+        done
+    )
+}
+
+function main(){
+    OPTIND=0
+    while getopts ':h' opt;do
+        case "$opt" in
+            h)
+                helpInfo
+                return 0
+                ;;
+        esac
+    done
+    shift $(($OPTIND-1))
+    if [[ "$@" == "" ]];then
+        mouthDay "月" "日"
+    fi
+}
+
+main "$@"
+
