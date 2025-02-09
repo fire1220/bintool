@@ -143,15 +143,24 @@ function setConfigBaseInfo(){
                 break
             done
         done
+        local oldUsername="${USERNAME}"
+        local oldUrl="${URL}"
+        local oldAppToken="${APP_TOKEN}"
         USERNAME="${inputValueList[0]}"
         URL="${inputValueList[1]}"
         APP_TOKEN="${inputValueList[2]}"
+        if [[ "${oldUsername}" == "$USERNAME" ]] && [[ "${oldUrl}" == "${URL}" ]] && [[ "${oldAppToken}" == "${APP_TOKEN}" ]] ;then
+            return 0
+        fi
         curlUrlInit
         res="$(testNetConfig)" && {
-            echo "$(echo "# 用户名";declare -p USERNAME;echo "# URL";declare -p URL;echo "# APP Token";declare -p APP_TOKEN)" > "$ConfigPath"
-            if $forcsSet ;then
-                echo -n > "$ConfitProjectPath"
+            configPathDir="$(dirname "$ConfigPath")"
+            if [[ "$configPathDir" != "" ]];then
+                rm -rf "$configPathDir"
+                resetConfitProjectPath
             fi
+            echo "$(echo "# 用户名";declare -p USERNAME;echo "# URL";declare -p URL;echo "# APP Token";declare -p APP_TOKEN)" > "$ConfigPath"
+            echo -n > "$ConfitProjectPath"
             break
         }
         while read -p "$(echo -e "${res}\033[33m➜\033[0m是否需要重新配置(Y/n):")" -r row ;do
