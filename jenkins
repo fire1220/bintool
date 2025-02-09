@@ -59,7 +59,7 @@ function helpInit(){
                                                     可选参数格式：jobName(如果不传jobName则进入列表手动选择)
                                                     案例：k8s-test-php-wm-light-backend-new
             --debug                             开启调试模式
-            --removeconfig                      移除所有配置
+            --removeconfig                      移除当前配置
             --setconfig                         设置配置
             --appendprojectconfig               追加项目配置
             --getconfig                         查看配置
