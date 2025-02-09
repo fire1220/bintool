@@ -36,9 +36,6 @@ resetConfitProjectPath && . "$ConfigPath" && . "$ConfitProjectPath"
 declare ConfigIs033a=true
 declare ConfigDebug=false             # 调试模式
 declare ConfigPrintInfo=false         # 打印配置信息
-declare ConfigUsername=""
-declare ConfigURL=""
-declare ConfigAppToken=""
 
 function helpInit(){
     cat <<!
@@ -75,16 +72,16 @@ function helpInit(){
 # /job/k8s-test-go-wm-light-practice-2/409/wfapi/describe/api/json
 
 function curlUrlInit(){
-    CURL_SRCIPT_JOBS_HEAD="curl -I -s -X POST -u ${ConfigUsername}:${ConfigAppToken} '${ConfigURL}/api/json'"                                 # 只打印响应头，用于测试配置
-    CURL_SRCIPT_JOBS_LIST="curl -s -X POST -u ${ConfigUsername}:${ConfigAppToken} '${ConfigURL}/api/json'"                                    # 所有jobs列表
-    CURL_SRCIPT_JOB_CONFIG="curl -s -X POST -u ${ConfigUsername}:${ConfigAppToken} '${ConfigURL}/job/%s/api/json'"                            # 获取单个job的参数配置
-    CURL_SCRIPT_BUILD="curl -i -s -X POST -u ${ConfigUsername}:${ConfigAppToken} '${ConfigURL}/job/%s/buildWithParameters' %s"                # 构建
-    CURL_SCRIPT_LAST_BUILD="curl -s -X POST -u ${ConfigUsername}:${ConfigAppToken} '${ConfigURL}/job/%s/lastBuild/api/json?pretty=true'"      # 获取最近构建的详情
-    CURL_SCRIPT_DETAILS="curl -s -X POST -u ${ConfigUsername}:${ConfigAppToken} '${ConfigURL}/job/%s/api/json?pretty=true'"                   # 获取构建的详情
-    CURL_SCRIPT_QUEUE_ITEM="curl -s -X POST -u ${ConfigUsername}:${ConfigAppToken} '%s' | jq '{task:.task, executable:.executable}'"    # 获取发布状态，只有发布时才可用，该地址是构建成功201后header头里的Location
+    CURL_SRCIPT_JOBS_HEAD="curl -I -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/api/json'"                                 # 只打印响应头，用于测试配置
+    CURL_SRCIPT_JOBS_LIST="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/api/json'"                                    # 所有jobs列表
+    CURL_SRCIPT_JOB_CONFIG="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/api/json'"                            # 获取单个job的参数配置
+    CURL_SCRIPT_BUILD="curl -i -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/buildWithParameters' %s"                # 构建
+    CURL_SCRIPT_LAST_BUILD="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/lastBuild/api/json?pretty=true'"      # 获取最近构建的详情
+    CURL_SCRIPT_DETAILS="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/job/%s/api/json?pretty=true'"                   # 获取构建的详情
+    CURL_SCRIPT_QUEUE_ITEM="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '%s' | jq '{task:.task, executable:.executable}'"    # 获取发布状态，只有发布时才可用，该地址是构建成功201后header头里的Location
     # 组合命令
     CURL_SCRIPT_LAST_BUILD_NUMBER="${CURL_SCRIPT_LAST_BUILD} | jq '.number'"
-    CURL_SRCIPT_JOBS_LIST_JQ="curl -s -X POST -u ${ConfigUsername}:${ConfigAppToken} '${ConfigURL}/api/json' | jq -r '.jobs[]|.name'"         # 所有jobs名称列表
+    CURL_SRCIPT_JOBS_LIST_JQ="curl -s -X POST -u ${USERNAME}:${APP_TOKEN} '${URL}/api/json' | jq -r '.jobs[]|.name'"         # 所有jobs名称列表
     CURL_SRCIPT_JOB_CONFIG_JQ="${CURL_SRCIPT_JOB_CONFIG} |jq -r '.property[]|{parameterDefinitions}|select(.parameterDefinitions != null)|.parameterDefinitions[]|.name'" # 获取单个job的参数配置
 }
 
@@ -130,7 +127,7 @@ function setConfigBaseInfo(){
         forcsSet=false
     fi
     if ! $forcsSet ;then
-        if [[ "$ConfigUsername" != "" ]] && [[ "$ConfigAppToken" != "" ]] && [[ "$ConfigURL" != ""  ]] ;then
+        if [[ "$USERNAME" != "" ]] && [[ "$APP_TOKEN" != "" ]] && [[ "$URL" != ""  ]] ;then
             return 0
         fi
     fi
@@ -146,13 +143,13 @@ function setConfigBaseInfo(){
                 break
             done
         done
-        local oldUsername="${ConfigUsername}"
-        local oldUrl="${ConfigURL}"
-        local oldAppToken="${ConfigAppToken}"
-        ConfigUsername="${inputValueList[0]}"
-        ConfigURL="${inputValueList[1]}"
-        ConfigAppToken="${inputValueList[2]}"
-        if [[ "${oldUsername}" == "$ConfigUsername" ]] && [[ "${oldUrl}" == "${ConfigURL}" ]] && [[ "${oldAppToken}" == "${ConfigAppToken}" ]] ;then
+        local oldUsername="${USERNAME}"
+        local oldUrl="${URL}"
+        local oldAppToken="${APP_TOKEN}"
+        USERNAME="${inputValueList[0]}"
+        URL="${inputValueList[1]}"
+        APP_TOKEN="${inputValueList[2]}"
+        if [[ "${oldUsername}" == "$USERNAME" ]] && [[ "${oldUrl}" == "${URL}" ]] && [[ "${oldAppToken}" == "${APP_TOKEN}" ]] ;then
             return 0
         fi
         curlUrlInit
@@ -162,7 +159,7 @@ function setConfigBaseInfo(){
                 rm -rf "$configPathDir"
                 resetConfitProjectPath
             fi
-            echo "$(echo "# 用户名";declare -p ConfigUsername;echo "# ConfigURL";declare -p ConfigURL;echo "# APP Token";declare -p ConfigAppToken)" > "$ConfigPath"
+            echo "$(echo "# 用户名";declare -p USERNAME;echo "# URL";declare -p URL;echo "# APP Token";declare -p APP_TOKEN)" > "$ConfigPath"
             echo -n > "$ConfitProjectPath"
             break
         }
@@ -381,9 +378,9 @@ function getConfigListInfo(){
 # 打印配置信息
 function getConfigInfo(){
     echo ""
-    printf "%-13s: %s\n" "用户名" "${ConfigUsername}"
-    printf "%-12s: %s\n" "域名" "${ConfigURL}"
-    printf "%-10s: %s\n" "APP Token" "${ConfigAppToken}"
+    printf "%-13s: %s\n" "用户名" "${USERNAME}"
+    printf "%-12s: %s\n" "域名" "${URL}"
+    printf "%-10s: %s\n" "APP Token" "${APP_TOKEN}"
     echo ""
     printf "当前目录和jobs对应关系:\n" 
     declare -a jobsNameList=()
