@@ -30,15 +30,15 @@ function resetConfitProjectPath(){
         touch "$ConfitProjectPath"
     fi
 }
+declare ConfigUsername=""
+declare ConfigURL=""
+declare ConfigAppToken=""
 resetConfitProjectPath && . "$ConfigPath" && . "$ConfitProjectPath"
 
 # true：采用\033[A的方式定位，false：采用 \033[s、\033[u的方式定位
 declare ConfigIs033a=true
 declare ConfigDebug=false             # 调试模式
 declare ConfigPrintInfo=false         # 打印配置信息
-declare ConfigUsername=""
-declare ConfigURL=""
-declare ConfigAppToken=""
 
 function helpInit(){
     cat <<!
@@ -62,10 +62,10 @@ function helpInit(){
                                                     可选参数格式：jobName(如果不传jobName则进入列表手动选择)
                                                     案例：k8s-test-php-wm-light-backend-new
             --debug                             开启调试模式
-            --removeconfig                      移除当前配置
-            --setconfig                         设置配置
+            --setconnect                        设置链接信息
+            --setconfig                         设置当前项目配置
             --appendprojectconfig               追加项目配置
-            --getconfig                         查看配置
+            --getconfig                         查看当前项目配置
             --getconfiglist                     获取配置列表
 
 !
@@ -134,6 +134,7 @@ function setConfigBaseInfo(){
             return 0
         fi
     fi
+    echo "$ConfigUsername"
     declare -a inputList=("用户名(jenkins的登录名):" "域名(kenkins的访问域名):" "app token(设置位置：点击右上角用户名->设置->API Token->添加新Token):")
     declare -a inputValueList=()
     while true;do
@@ -477,12 +478,13 @@ function main(){
                     "help")
                         helpInit
                         ;;
-                    "removeconfig")
-                        echo -n > "$ConfitProjectPath"
+                    "setconnect")
+                        setConfigBaseInfo true
+                        setConfigParamCommitIdList true
                         return 0
                         ;;
                     "setconfig")
-                        setConfigBaseInfo true
+                        setConfigBaseInfo
                         setConfigParamCommitIdList true
                         return 0
                         ;;
