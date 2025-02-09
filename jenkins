@@ -414,7 +414,7 @@ function getConfigInfo(){
     done
     for v in "${jobsNameList[@]}";do
         printf "\t目录名  : %s\n" "${v}"
-        printf "\t参数列表:%s\n"
+        printf "\t项目列表:%s\n"
         for v2 in "${CONFIG_DIR_TO_JOBS_NAME_LIST[@]}";do
             local name="${v2%%=*}"
             local value=""
