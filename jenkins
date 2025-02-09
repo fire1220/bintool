@@ -65,7 +65,6 @@ function helpInit(){
             --debug                             开启调试模式
             --setconnect                        设置链接信息
             --setconfig                         设置当前项目配置
-            --appendprojectconfig               追加项目配置
             --getconfig                         查看当前项目配置
             --getconfiglist                     获取配置列表
 
@@ -83,6 +82,7 @@ function curlUrlInit(){
     CURL_SCRIPT_LAST_BUILD="curl -s -X POST -u ${ConfigUsername}:${ConfigAppToken} '${ConfigURL}/job/%s/lastBuild/api/json?pretty=true'"      # 获取最近构建的详情
     CURL_SCRIPT_DETAILS="curl -s -X POST -u ${ConfigUsername}:${ConfigAppToken} '${ConfigURL}/job/%s/api/json?pretty=true'"                   # 获取构建的详情
     CURL_SCRIPT_QUEUE_ITEM="curl -s -X POST -u ${ConfigUsername}:${ConfigAppToken} '%s' | jq '{task:.task, executable:.executable}'"    # 获取发布状态，只有发布时才可用，该地址是构建成功201后header头里的Location
+    CURL_SCRIPT_PLAN="curl -s -X POST -u ${ConfigUsername}:${ConfigAppToken} '${ConfigURL}/job/%s/wfapi/describe/api/json'"                   # 获取各个位置进度
     # 组合命令
     CURL_SCRIPT_LAST_BUILD_NUMBER="${CURL_SCRIPT_LAST_BUILD} | jq '.number'"
     CURL_SRCIPT_JOBS_LIST_JQ="curl -s -X POST -u ${ConfigUsername}:${ConfigAppToken} '${ConfigURL}/api/json' | jq -r '.jobs[]|.name'"         # 所有jobs名称列表
@@ -504,11 +504,6 @@ function main(){
                     "setconfig")
                         setConfigBaseInfo
                         setConfigParamCommitIdList true
-                        return 0
-                        ;;
-                    "appendprojectconfig")
-                        setConfigBaseInfo
-                        setConfigParamCommitIdList
                         return 0
                         ;;
                     "getconfig")
@@ -985,7 +980,21 @@ function progressFmt(){
         resultTemp="Building"
         bingingEmoji="⏳"
     fi
-    local strTempCurrent="[${podAndNumber}]:【Wait:${waitDurationTime}s】【Build:${durationTime}s】【${proportionNum}％】【${resultTemp}】$bingingEmoji"
+    local execStr="$(printf "$CURL_SCRIPT_PLAN" "$podAndNumber")"
+    local execCurl="$(eval "$execStr")"
+    IFS=$'\n' read -d'\n' -ra playInfoNameList <<< "$(echo "$execCurl" | jq -r '.stages[]|.name' 2> /dev/null)"
+    IFS=$'\n' read -d'\n' -ra playInfoStatusList <<< "$(echo "$execCurl" | jq -r '.stages[]|.status' 2> /dev/null)"
+    local playInfo=""
+    if [[ "$playInfoStatusList" != "" ]];then
+        for k in "${!playInfoStatusList[@]}";do
+            if [[ "${playInfoStatusList[$k]}" == "SUCCESS" ]];then
+                continue
+            fi
+            playInfo="【${playInfoNameList[$k]}】"
+            break
+        done
+    fi
+    local strTempCurrent="[${podAndNumber}]:【Wait:${waitDurationTime}s】【Build:${durationTime}s】【${proportionNum}％】【${resultTemp}】${playInfo}${bingingEmoji}"
     printf "${strTempCurrent}"
     if [[ "$result" == "null" ]];then
         return 0
