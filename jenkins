@@ -2,7 +2,8 @@
 
 declare PWDINFO="$(pwd -P)"
 declare -r DIR_NAME="$(basename "$PWDINFO")"  # 当前目录名称
-declare -r SCRIPT_EXEC_TIME="$(date +'%s')" # 脚本执行开始时间
+declare -r SCRIPT_EXEC_TIME="$(date +'%s')"   # 脚本执行开始时间
+declare BuildBeginTimeInt="$SCRIPT_EXEC_TIME" # 构建开始时间
 
 # 是:采用获取最后一个发布数据，如果最后一个发布数据不是最新的，则重复尝试
 # 否:采用轮询build返回的header的Location地址
@@ -827,6 +828,7 @@ function buildAndProgress(){
         echo "没有找到对应配置"
         return 0
     fi
+    BuildBeginTimeInt="$(date +'%s')" # 构建开始时间
     read -ra configPodList <<< "$configPodList"
     for podName in "${configPodList[@]}";do
         execStr=$(printf "$CURL_SCRIPT_BUILD" "${podName}" "${params}")
@@ -924,7 +926,7 @@ function progressPodListFun(){
 #    13 error
 function progressFmt(){
     local runResporse="$1"
-    local buildBeginTimeInt="$2"
+    local buildDoneTimeInt="$2"
     local podAndNumber="$3"
     local idx="$4"
     local building
@@ -932,8 +934,8 @@ function progressFmt(){
     local timestamp
     local result
     local isJqError=true
-    if [[ "$buildBeginTimeInt" == "" ]];then
-        buildBeginTimeInt=$SCRIPT_EXEC_TIME
+    if [[ "$buildDoneTimeInt" == "" ]];then
+        buildDoneTimeInt=$SCRIPT_EXEC_TIME
     fi
     building="$(echo "$runResporse" | jq '.building')" && {
         isJqError=false
@@ -968,8 +970,8 @@ function progressFmt(){
         return 11
     fi
     local now="$(date +'%s')"
-    local durationTime=$(($now-$buildBeginTimeInt))
-    local waitDurationTime=$(($buildBeginTimeInt-$SCRIPT_EXEC_TIME))
+    local durationTime=$(($now-$buildDoneTimeInt))
+    local waitDurationTime=$(($buildDoneTimeInt-$BuildBeginTimeInt))
     local proportionNum="$((100000*$durationTime/$estimatedDuration))"
     if (($proportionNum >= 100)) ;then
         proportionNum=99
