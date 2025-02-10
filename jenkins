@@ -89,6 +89,8 @@ function curlUrlInit(){
     CURL_SRCIPT_JOB_CONFIG_JQ="${CURL_SRCIPT_JOB_CONFIG} |jq -r '.property[]|{parameterDefinitions}|select(.parameterDefinitions != null)|.parameterDefinitions[]|.name'" # 获取单个job的参数配置
 }
 
+curlUrlInit
+
 # 在配置列表中获取pod name
 declare READ_CONFIG_JOB_NAME=""
 
@@ -503,7 +505,7 @@ function main(){
                         ;;
                     "setconfig")
                         setConfigBaseInfo
-                        setConfigParamCommitIdList true
+                        setConfigParamCommitIdList
                         return 0
                         ;;
                     "getconfig")
