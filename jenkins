@@ -984,13 +984,12 @@ function progressFmt(){
     fi
     declare bingingEmoji=""
     declare resultTemp="$result"
-    if [[ "$resultTemp" == "SUCCESS" ]];then
-        proportionNum=100
-        bingingEmoji="✅"
-    fi
     if [[ "$resultTemp" == "null" ]];then
         resultTemp="Building"
         bingingEmoji="⏳"
+    elif [[ "$resultTemp" == "SUCCESS" ]];then
+        proportionNum=100
+        bingingEmoji="✅"
     else
         resultTemp="\033[31m${resultTemp}\033[0m"
     fi
