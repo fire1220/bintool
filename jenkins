@@ -1130,8 +1130,8 @@ function progressPod() {
             fi
             local printTemp="$(printf "\033[31m${rowData}\033[0m" | perl -pe 's/\e\[[0-9;]*[mK]//g')"
             local chinaNum="$(echo ${printTemp} | grep -o '[一-龥]' | wc -l)"
-            local colsTemp=$((${cols} - ${chinaNum} - 3))
-            if (( ${#printTemp} > $colsTemp ));then
+            local colsTemp=$((${cols} - ${chinaNum} ))
+            if (( ${#printTemp} > $colsTemp - 3 ));then
                 rowData="${printTemp:0:${colsTemp}}\033[0m..."
             fi
             tempPrintStr="${tempPrintStr}${n}${rowData}"
