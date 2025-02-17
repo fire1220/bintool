@@ -1126,7 +1126,6 @@ function progressPod() {
             if (($k>0));then
                 n="\n"
             fi
-            # tempPrintStr="${tempPrintStr}${n}\r\033[2K${listPrintData[$k]}"
             tempPrintStr="${tempPrintStr}${n}${listPrintData[$k]}"
         done
 
@@ -1138,7 +1137,6 @@ function progressPod() {
                 suffix="\033[s\033[u"
             fi
             printf "\r\033[s\033[J${tempPrintStr}${suffix}"
-            # echo "\r\033[s\033[J${tempPrintStr}${suffix}"
         fi
 
         if [[ "${#progressPodList[@]}" == "${#progressRet[@]}" ]];then
