@@ -1123,13 +1123,14 @@ function progressPod() {
         local cols="$(tput cols)"
         local tempPrintStr=""
         for k in "${!listPrintData[@]}";do
+            local rowData="${listPrintData[$k]}"
             local n=""
             if (($k>0));then
                 n="\n"
             fi
-            local rowData="${listPrintData[$k]}"
             local printTemp="$(printf "\033[31m${rowData}\033[0m" | perl -pe 's/\e\[[0-9;]*[mK]//g')"
-            local colsTemp=$((${cols} - 16))
+            local chinaNum="$(echo ${printTemp} | grep -o '[一-龥]' | wc -l)"
+            local colsTemp=$((${cols} - ${chinaNum} - 3))
             if (( ${#printTemp} > $colsTemp ));then
                 rowData="${printTemp:0:${colsTemp}}\033[0m..."
             fi
