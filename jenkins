@@ -1112,16 +1112,17 @@ function progressPod() {
             fi
         done
 
-        if $ConfigIs033a ;then
-            local skipLineNumberTemp=""
-            if (($skipLineNumber>0));then
-                skipLineNumberTemp="\033[${skipLineNumber}A"
-            fi
-            skipLineNumber=$((${#listPrintData[@]}-1))
-        fi
+        # if $ConfigIs033a ;then
+        #     local skipLineNumberTemp=""
+        #     if (($skipLineNumber>0));then
+        #         skipLineNumberTemp="\033[${skipLineNumber}A"
+        #     fi
+        #     skipLineNumber=$((${#listPrintData[@]}-1))
+        # fi
 
         local cols="$(tput cols)"
         local tempPrintStr=""
+        local upNum="0"
         for k in "${!listPrintData[@]}";do
             local rowData="${listPrintData[$k]}"
             local n=""
@@ -1130,15 +1131,30 @@ function progressPod() {
             fi
             local printTemp="$(printf "\033[31m${rowData}\033[0m" | perl -pe 's/\e\[[0-9;]*[mK]//g')"
             local chinaNum="$(echo ${printTemp} | grep -o '[一-龥]' | wc -l)"
-            local colsTemp=$((${cols} - ${chinaNum} ))
-            if (( ${#printTemp} > $colsTemp - 3 ));then
-                rowData="${printTemp:0:${colsTemp}}\033[0m..."
-            fi
-            tempPrintStr="${tempPrintStr}${n}${rowData}"
+            local upNumTemp="$(echo $(((${#printTemp} + ${chinaNum}) / $cols)))"
+            upNum=$(($upNum+$upNumTemp))
+            # if (( ${#printTemp} > $colsTemp - 3 ));then
+            #     rowData="${printTemp:0:${colsTemp}}\033[0m..."
+            # fi
+            tempPrintStr="${tempPrintStr}${n}  ${rowData}"
         done
 
         if $ConfigIs033a ;then
-            printf "${skipLineNumberTemp}\r\033[J${tempPrintStr}"
+            local skipLineNumberTemp=""
+            skipLineNumber=$(( ${#listPrintData[@]} - 1 ))
+            if (($skipLineNumber>0)) && [[ "${#progressPodList[@]}" != "${#progressRet[@]}" ]];then
+                skipLineNumberTemp="\033[${skipLineNumber}A\r"
+            fi
+            # skipLineNumber=$(( ${#listPrintData[@]} - 1 ))
+            local skipUpNum=""
+            if (( $upNum > 0 )) && [[ "${#progressPodList[@]}" != "${#progressRet[@]}" ]];then
+                if (($skipLineNumber>1));then
+                    ((upNum++))
+                fi
+                skipUpNum="\033[${upNum}A\r"
+            fi
+            # printf "${skipLineNumberTemp}\r${skipLineNumber}\033[J${tempPrintStr}"
+            printf "\r\033[J${tempPrintStr}${skipUpNum}${skipLineNumberTemp}"
         else
             local suffix="\033[u"
             if [[ "${#progressPodList[@]}" == "${#progressRet[@]}" ]];then
