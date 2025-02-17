@@ -1120,13 +1120,20 @@ function progressPod() {
             skipLineNumber=$((${#listPrintData[@]}-1))
         fi
 
+        local cols="$(tput cols)"
         local tempPrintStr=""
         for k in "${!listPrintData[@]}";do
             local n=""
             if (($k>0));then
                 n="\n"
             fi
-            tempPrintStr="${tempPrintStr}${n}${listPrintData[$k]}"
+            local rowData="${listPrintData[$k]}"
+            local printTemp="$(printf "\033[31m${rowData}\033[0m" | perl -pe 's/\e\[[0-9;]*[mK]//g')"
+            local colsTemp=$((${cols} - 16))
+            if (( ${#printTemp} > $colsTemp ));then
+                rowData="${printTemp:0:${colsTemp}}\033[0m..."
+            fi
+            tempPrintStr="${tempPrintStr}${n}${rowData}"
         done
 
         if $ConfigIs033a ;then
