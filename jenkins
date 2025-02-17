@@ -1133,9 +1133,6 @@ function progressPod() {
             local chinaNum="$(echo ${printTemp} | grep -o '[一-龥]' | wc -l)"
             local upNumTemp="$(echo $(((${#printTemp} + ${chinaNum}) / $cols)))"
             upNum=$(($upNum+$upNumTemp))
-            # if (( ${#printTemp} > $colsTemp - 3 ));then
-            #     rowData="${printTemp:0:${colsTemp}}\033[0m..."
-            # fi
             tempPrintStr="${tempPrintStr}${n}  ${rowData}"
         done
 
