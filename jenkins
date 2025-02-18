@@ -580,7 +580,6 @@ function main(){
     fi
 
     if ! $ConfigIs033a ;then
-        # trap 'reset -I' EXIT
         reset
     fi
 
