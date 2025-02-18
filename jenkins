@@ -948,31 +948,35 @@ function progressFmt(){
     estimatedDuration="$(echo "$runResporse" | jq '.estimatedDuration')" && {
         isJqError=false
     }
-    timestamp="$(echo "$runResporse" | jq -r '.timestamp')" && {
-        isJqError=false
-    }
     result="$(echo "$runResporse" | jq -r '.result')" && {
         isJqError=false
     }
+    if $IS_LAST_GET_NUMBER ;then
+        timestamp="$(echo "$runResporse" | jq -r '.timestamp')" && {
+            isJqError=false
+        }
+    fi
     if $isJqError ;then
         echo >&2 "$runResporse"
         echo >&2 "数据解析失败,不是一个有效的json"
         return 13
     fi
-    if [[ "$timestamp" == "" ]];then
-        printf "\r没有获取到时间%s" "$(loadingStr "$idx")"
-        return 11
-    fi
-    if (( $timestamp > 9000000000 ));then
-        timestamp=$(($timestamp/1000))
-    fi
-    if (($timestamp < $SCRIPT_EXEC_TIME));then
-        if $ConfigDebug ;then
-            printf "正在获取中(jenkinsTimestamp:${timestamp};scriptExecTime:${SCRIPT_EXEC_TIME})%s" "$(loadingStr "$idx")"
-        else
-            printf "正在获取中%s" "$(loadingStr "$idx")"
+    if $IS_LAST_GET_NUMBER ;then
+        if [[ "$timestamp" == "" ]];then
+            printf "\r没有获取到时间%s" "$(loadingStr "$idx")"
+            return 11
         fi
-        return 11
+        if (( $timestamp > 9000000000 ));then
+            timestamp=$(($timestamp/1000))
+        fi
+        if (($timestamp < $SCRIPT_EXEC_TIME));then
+            if $ConfigDebug ;then
+                printf "正在获取(jenkinsTimestamp:${timestamp};scriptExecTime:${SCRIPT_EXEC_TIME})%s" "$(loadingStr "$idx")"
+            else
+                printf "正在获取%s" "$(loadingStr "$idx")"
+            fi
+            return 11
+        fi
     fi
     local now="$(date +'%s')"
     local durationTime=$(($now-$buildDoneTimeInt))
