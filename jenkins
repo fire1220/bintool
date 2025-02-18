@@ -1112,14 +1112,6 @@ function progressPod() {
             fi
         done
 
-        # if $ConfigIs033a ;then
-        #     local skipLineNumberTemp=""
-        #     if (($skipLineNumber>0));then
-        #         skipLineNumberTemp="\033[${skipLineNumber}A"
-        #     fi
-        #     skipLineNumber=$((${#listPrintData[@]}-1))
-        # fi
-
         local cols="$(tput cols)"
         local tempPrintStr=""
         local upNum="0"
@@ -1142,7 +1134,6 @@ function progressPod() {
             if (($skipLineNumber>0)) && [[ "${#progressPodList[@]}" != "${#progressRet[@]}" ]];then
                 skipLineNumberTemp="\033[${skipLineNumber}A"
             fi
-            # skipLineNumber=$(( ${#listPrintData[@]} - 1 ))
             local skipUpNum=""
             if (( $upNum > 0 )) && [[ "${#progressPodList[@]}" != "${#progressRet[@]}" ]];then
                 if (($skipLineNumber>1));then
@@ -1154,7 +1145,6 @@ function progressPod() {
             if [[ "${#progressPodList[@]}" == "${#progressRet[@]}" ]];then
                 cursorR=''
             fi
-            # printf "${skipLineNumberTemp}\r${skipLineNumber}\033[J${tempPrintStr}"
             printf "${cursorR}\033[J${tempPrintStr}${cursorR}${skipUpNum}${cursorR}${skipLineNumberTemp}${cursorR}"
         else
             local suffix="\033[u"
