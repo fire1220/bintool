@@ -9,6 +9,12 @@
 
 - dev命令：
 
+  > 功能：
+  >
+  > ​	1.合并到文件名（dev）分支
+  >
+  > ​    2.如果添加-j或--jenkins参数，会通过jenkins发布，部署服务
+
 ![dev](.img/dev.png)
 
 rancherlogin命令：
