@@ -467,188 +467,6 @@ function getConfigInfo(){
     echo ""
 }
 
-function main(){
-    local mainParam=""
-    local isDetails=false
-    local isLastBuild=false
-    local commitId=""
-    OPTIND=1
-    while getopts ':c:s:-:hdl' opt;do
-        case "$opt" in
-            c)
-                commitId="$OPTARG"
-                ;;
-            s)
-                if [[ "$OPTARG" == "" ]];then
-                    echo "param --${OPTARG} 的值不正确，值应该是配置名称,并且只能是字母或数字"
-                    return 1
-                elif ! [[ "$OPTARG" =~ ^[a-zA-Z0-9]+$ ]];then
-                    echo "param --${OPTARG} 的值不正确，只能是字母或数字"
-                    return 1
-                fi
-                ConfigName="$OPTARG"
-                ;;
-            h)
-                helpInit
-                ;;
-            d)
-                isDetails=true
-                ;;
-            l)
-                isLastBuild=true
-                ;;
-            -)
-                local longArgKey="${OPTARG%%=*}"
-                local longArgVal=""
-                if [[ "$OPTARG" =~ = ]];then
-                    longArgVal="${OPTARG#*=}"
-                fi
-                case "$longArgKey" in
-                    "help")
-                        helpInit
-                        ;;
-                    "setconnect")
-                        setConfigBaseInfo true
-                        setConfigParamCommitIdList true true
-                        return 0
-                        ;;
-                    "setconfig")
-                        setConfigBaseInfo
-                        setConfigParamCommitIdList false true
-                        return 0
-                        ;;
-                    "getconfig")
-                        ConfigPrintInfo=true
-                        ;;
-                    "getconfiglist")
-                        getConfigListInfo
-                        return 0
-                        ;;
-                    "debug")
-                        ConfigDebug=true
-                        ConfigIs033a=false
-                        ;;
-                    "commitid")
-                        if [[ "${longArgKey}" == "" ]];then
-                            echo "param --${longArgKey} 的值不能为空"
-                            exit 1
-                        fi
-                        commitId="$longArgVal"
-                        ;;
-                    "details")
-                        if [[ "$longArgVal" == "" ]] || [[ "$longArgVal" == "true" ]];then
-                            isDetails=true
-                        else
-                            echo "param --${longArgKey} 的值不正确，值应该是空或者true"
-                            exit 1
-                        fi
-                        ;;
-                    "lastinfo")
-                        if [[ "$longArgVal" == "" ]] || [[ "$longArgVal" == "true" ]];then
-                            isLastBuild=true
-                        else
-                            echo "param --${longArgKey} 的值不正确，值应该是空或者true"
-                            exit 1
-                        fi
-                        ;;
-                    "configname")
-                        if [[ "$longArgVal" == "" ]];then
-                            echo "param --${longArgKey} 的值不正确，值应该是配置名称,并且只能是字母或数字"
-                            return 1
-                        elif ! [[ "$longArgVal" =~ ^[a-zA-Z0-9]+$ ]];then
-                            echo "param --${longArgKey} 的值不正确，只能是字母或数字"
-                            return 1
-                        fi
-                        ConfigName="$longArgVal"
-                        ;;
-                    *)
-                        ParamList+=("$OPTARG")
-                        ;;
-                esac
-                ;;
-        esac
-    done
-    shift $(($OPTIND-1))
-
-    resetConfitProjectPath && . "$ConfigPath" && . "$ConfitProjectPath"
-
-    curlUrlInit
-
-    if $ConfigPrintInfo ;then
-        getConfigInfo
-        return 0
-    fi
-
-    if ! $ConfigIs033a ;then
-        reset
-    fi
-
-    declare -a commandList=("jq")
-    declare isError=false
-    for v in "${commandList[@]}";do
-        type "$v" &> /dev/null || {
-            cat <<!
-          $(echo -e "\033[31;1m➜\033[0m") 缺少 ${v} 命令
-            安装方法：
-                MacOS : brew install $v
-                Linux : yum install $v
-                Ubuntu: apt install $v
-!
-        echo ""
-        isError=true
-    }
-    done
-    if $isError ;then
-        return 1
-    fi
-
-    setConfigBaseInfo
-
-    mainParam="$1"
-
-    if $isDetails ;then
-        local jobNameAndbuildNumber="$mainParam"
-        if [[ "$jobNameAndbuildNumber" == "" ]];then
-            getJobNameByRead
-            jobName="$READ_CONFIG_JOB_NAME"
-            if [[ "$jobName" == "" ]];then
-                exit 0
-            fi
-            lastBuildId="$(lastBuild "$jobName"| jq -r '.id')"||{
-                type jq &> /dev/null || {
-                    cat <<!
-            $(echo -e "\033[31m 需要安装jq命令\033[0m：")
-                Linux: yum install jq
-                MacOS: brew install jq
-!
-                }
-                echo "$lastBuildId"
-                exit 1
-            }
-            if [[ "$lastBuildId" == "" ]];then
-                echo "没有找到对应的id"
-            fi
-            jobNameAndbuildNumber="${jobName}/${lastBuildId}"
-        fi
-        details "$jobNameAndbuildNumber"
-        exit 0
-    fi
-
-    if $isLastBuild ;then
-        local jobName="$mainParam"
-        lastBuild "$jobName"
-        exit 0
-    fi
-
-    if [[ "$commitId" == "" ]];then
-        commitId="$mainParam"
-    fi
-    if [[ "$commitId" == "" ]];then
-        helpInit
-    fi
-    buildAndProgress "$commitId"
-}
-
 # 查看最后发布的信息
 function lastBuild(){
     local jobName="$1"
@@ -1175,6 +993,188 @@ function progressPod() {
     done
     echo ""
     return 0
+}
+
+function main(){
+    local mainParam=""
+    local isDetails=false
+    local isLastBuild=false
+    local commitId=""
+    OPTIND=1
+    while getopts ':c:s:-:hdl' opt;do
+        case "$opt" in
+            c)
+                commitId="$OPTARG"
+                ;;
+            s)
+                if [[ "$OPTARG" == "" ]];then
+                    echo "param --${OPTARG} 的值不正确，值应该是配置名称,并且只能是字母或数字"
+                    return 1
+                elif ! [[ "$OPTARG" =~ ^[a-zA-Z0-9]+$ ]];then
+                    echo "param --${OPTARG} 的值不正确，只能是字母或数字"
+                    return 1
+                fi
+                ConfigName="$OPTARG"
+                ;;
+            h)
+                helpInit
+                ;;
+            d)
+                isDetails=true
+                ;;
+            l)
+                isLastBuild=true
+                ;;
+            -)
+                local longArgKey="${OPTARG%%=*}"
+                local longArgVal=""
+                if [[ "$OPTARG" =~ = ]];then
+                    longArgVal="${OPTARG#*=}"
+                fi
+                case "$longArgKey" in
+                    "help")
+                        helpInit
+                        ;;
+                    "setconnect")
+                        setConfigBaseInfo true
+                        setConfigParamCommitIdList true true
+                        return 0
+                        ;;
+                    "setconfig")
+                        setConfigBaseInfo
+                        setConfigParamCommitIdList false true
+                        return 0
+                        ;;
+                    "getconfig")
+                        ConfigPrintInfo=true
+                        ;;
+                    "getconfiglist")
+                        getConfigListInfo
+                        return 0
+                        ;;
+                    "debug")
+                        ConfigDebug=true
+                        ConfigIs033a=false
+                        ;;
+                    "commitid")
+                        if [[ "${longArgKey}" == "" ]];then
+                            echo "param --${longArgKey} 的值不能为空"
+                            exit 1
+                        fi
+                        commitId="$longArgVal"
+                        ;;
+                    "details")
+                        if [[ "$longArgVal" == "" ]] || [[ "$longArgVal" == "true" ]];then
+                            isDetails=true
+                        else
+                            echo "param --${longArgKey} 的值不正确，值应该是空或者true"
+                            exit 1
+                        fi
+                        ;;
+                    "lastinfo")
+                        if [[ "$longArgVal" == "" ]] || [[ "$longArgVal" == "true" ]];then
+                            isLastBuild=true
+                        else
+                            echo "param --${longArgKey} 的值不正确，值应该是空或者true"
+                            exit 1
+                        fi
+                        ;;
+                    "configname")
+                        if [[ "$longArgVal" == "" ]];then
+                            echo "param --${longArgKey} 的值不正确，值应该是配置名称,并且只能是字母或数字"
+                            return 1
+                        elif ! [[ "$longArgVal" =~ ^[a-zA-Z0-9]+$ ]];then
+                            echo "param --${longArgKey} 的值不正确，只能是字母或数字"
+                            return 1
+                        fi
+                        ConfigName="$longArgVal"
+                        ;;
+                    *)
+                        ParamList+=("$OPTARG")
+                        ;;
+                esac
+                ;;
+        esac
+    done
+    shift $(($OPTIND-1))
+
+    resetConfitProjectPath && . "$ConfigPath" && . "$ConfitProjectPath"
+
+    curlUrlInit
+
+    if $ConfigPrintInfo ;then
+        getConfigInfo
+        return 0
+    fi
+
+    if ! $ConfigIs033a ;then
+        reset
+    fi
+
+    declare -a commandList=("jq" "perl")
+    declare isError=false
+    for v in "${commandList[@]}";do
+        type "$v" &> /dev/null || {
+            cat <<!
+          $(echo -e "\033[31;1m➜\033[0m") 缺少 ${v} 命令
+            安装方法：
+                MacOS : brew install $v
+                Linux : yum install $v
+                Ubuntu: apt install $v
+!
+        echo ""
+        isError=true
+    }
+    done
+    if $isError ;then
+        return 1
+    fi
+
+    setConfigBaseInfo
+
+    mainParam="$1"
+
+    if $isDetails ;then
+        local jobNameAndbuildNumber="$mainParam"
+        if [[ "$jobNameAndbuildNumber" == "" ]];then
+            getJobNameByRead
+            jobName="$READ_CONFIG_JOB_NAME"
+            if [[ "$jobName" == "" ]];then
+                exit 0
+            fi
+            lastBuildId="$(lastBuild "$jobName"| jq -r '.id')"||{
+                type jq &> /dev/null || {
+                    cat <<!
+            $(echo -e "\033[31m 需要安装jq命令\033[0m：")
+                Linux: yum install jq
+                MacOS: brew install jq
+!
+                }
+                echo "$lastBuildId"
+                exit 1
+            }
+            if [[ "$lastBuildId" == "" ]];then
+                echo "没有找到对应的id"
+            fi
+            jobNameAndbuildNumber="${jobName}/${lastBuildId}"
+        fi
+        details "$jobNameAndbuildNumber"
+        exit 0
+    fi
+
+    if $isLastBuild ;then
+        local jobName="$mainParam"
+        lastBuild "$jobName"
+        exit 0
+    fi
+
+    if [[ "$commitId" == "" ]];then
+        commitId="$mainParam"
+    fi
+    if [[ "$commitId" == "" ]];then
+        helpInit
+    fi
+    buildAndProgress "$commitId"
 }
 
 main "$@"
