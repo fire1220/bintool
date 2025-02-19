@@ -981,9 +981,12 @@ function progressFmt(){
     local now="$(date +'%s')"
     local durationTime=$(($now-$buildDoneTimeInt))
     local waitDurationTime=$(($buildDoneTimeInt-$BuildBeginTimeInt))
-    local proportionNum="$((100000*$durationTime/$estimatedDuration))"
-    if (($proportionNum >= 100)) ;then
-        proportionNum=99
+    local proportionNum="--"
+    if [[ "$$estimatedDuration" != "" ]];then
+        proportionNum="$((100000*$durationTime/$estimatedDuration))"
+        if (($proportionNum >= 100)) ;then
+            proportionNum="99"
+        fi
     fi
     declare bingingEmoji=""
     declare resultTemp="$result"
@@ -991,7 +994,7 @@ function progressFmt(){
         resultTemp="Building"
         bingingEmoji="⏳"
     elif [[ "$resultTemp" == "SUCCESS" ]];then
-        proportionNum=100
+        proportionNum="100"
         bingingEmoji="✅"
     else
         resultTemp="\033[31m${resultTemp}\033[0m"
