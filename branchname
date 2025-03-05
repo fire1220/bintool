@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# 功能做了一半，目前还不完整，只实现了向下查询，应该在分支没有删掉的情况下向上查询在是正确的
+
 function catFile(){
     declare commitId="$1"
     declare isFindMergeExit="$2"

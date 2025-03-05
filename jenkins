@@ -800,7 +800,7 @@ function progressFmt(){
     local durationTime=$(($now-$buildDoneTimeInt))
     local waitDurationTime=$(($buildDoneTimeInt-$BuildBeginTimeInt))
     local proportionNum="--"
-    if [[ "$$estimatedDuration" != "" ]];then
+    if [[ "$estimatedDuration" != "" ]];then
         proportionNum="$((100000*$durationTime/$estimatedDuration))"
         if (($proportionNum >= 100)) ;then
             proportionNum="99"
