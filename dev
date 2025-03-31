@@ -131,6 +131,7 @@ function main(){
         return 1
     fi
     local execList
+    local gitLogOne="git --no-pager log --no-color -n 1"
     execList=(
         "git --no-pager diff"
         "git add -A"
@@ -141,7 +142,7 @@ function main(){
         "git pull"
         "git merge $currentBranchName -m 'Merge branch $currentBranchName into $DevelopmentBranch'"
         "git push"
-        "git --no-pager log --no-color -n 1"
+        "$gitLogOne"
         "git checkout $currentBranchName"
     );
     if $IsNoCheckout ;then
@@ -168,7 +169,7 @@ function main(){
         commandPrefix="\033[32m[$dateTime] \033[36m$dirName\033[32m (\033[31;1m$currentBranchNameTemp\033[0;32m)\033[1m ➜ \033[0m"
         echo  -e "${commandPrefix}\033[33m${commandStr}\033[0m"
 
-        if [[ "$commandStr" =~ "log" ]];then
+        if [[ "$commandStr" == "$gitLogOne" ]];then
             commitId=$(eval "$commandStr" | head -n1 | awk '{print $2}')
         fi
 
