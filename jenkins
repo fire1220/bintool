@@ -238,13 +238,13 @@ function setConfigParamCommitIdList(){
     local closureReadNumberSearch="$DIR_NAME"
 
     read -d '' -ra closureReadNumberDataList <<< "$listAllRes"
-    closureReadNumberReadStr="选择目录绑定的项目名称(输入编号，多个用空格分开):"
+    closureReadNumberReadStr="选择目录绑定的项目名称[输入编号(多个用空格分开)]:"
     function closureReadNumber(){
         if [[ "$closureReadNumberDataList" == "" ]];then
             return 0
         fi
         if [[ "$closureReadNumberReadStr" == "" ]];then
-            closureReadNumberReadStr="select num list(输入编号，多个用空格分开):"
+            closureReadNumberReadStr="select num list[输入编号(多个用空格分开)]:"
         fi
         closureReadNumberSelectUniq=()
         declare -a list=()
