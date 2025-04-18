@@ -17,6 +17,7 @@ function helpInfo(){
 
         example:
             $commandName -s 10 -d',' -f x.txt
+            cat x.txt | $commandName -Ss 10
 !
 }
 
