@@ -660,7 +660,7 @@ function buildAndProgress(){
         fi
         local headerInfo=""
         headerInfo="$(eval "$execStr")" || {
-            echo -e "\033[31m【${podName} build error】\033[0m"
+            echo -e "\033[31m 【build error】【${podName}】[exec] ${execStr}\033[0m"
             continue
         }
         if [[ "$headerInfo" != "" ]];then
