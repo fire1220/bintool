@@ -23,7 +23,7 @@ readonly podNameGroupSeparator="-"                  # pod名称分隔符,例如�
 
 # dependency package
 pkgRancher='rancher'                                                # Dependency package
-baseCommandList=('sed' 'grep' 'awk' 'wc')                           # Dependency package
+baseCommandList=('sed' 'grep' 'awk' 'wc' 'kubectl')                 # Dependency package
 commandList=${baseCommandList[@]} && commandList+=("$pkgRancher")   # Dependency package list
 # (Optional package) Enhanced interactive software, you can use the arrow keys to view the history and locate.
 readonly rlwrapCommandName="rlwrap"                                 # (可选包)增强交互软件，可以使用方向键查看历史和定位
@@ -97,7 +97,7 @@ function helpEN() {
 function helpCN() {
     if [[ "$1" == "-h" ]];then
         cat <<!
-        参数：
+    参    数：
             -t      进入测试模式，里面所有数据都是假的，用于演示
 
 !
@@ -118,6 +118,14 @@ function helpCN() {
         3.如果没有搜索到结果时，再次回车会拉取全部列表
         4.如果namespace里没有pod是，再次回车会返回到namespace列表
 !
+    if [[ "$1" == "-h" ]];then
+        cat <<!
+
+    登录命令：
+        rancher login 'your url' --token 'your Bearer Token'
+
+!
+    fi
 }
 
 function help(){
@@ -127,9 +135,9 @@ function help(){
         isChina=true
     fi
     if $isChina;then
-        helpCN
+        helpCN "$1"
     else
-        helpEN
+        helpEN "$1"
     fi
 }
 
