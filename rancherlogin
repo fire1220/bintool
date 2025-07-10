@@ -438,7 +438,7 @@ if [[ "$?" != "0" ]];then
 fi
 
 help
-printHead -s "=" -N -l 118
+printHead -s "=" -N -l 128
 
 function printNamespaceList(){
     local namespaceList="$1"
@@ -814,12 +814,17 @@ function printPodList() {
     if [[ "$2" != "" ]];then
         keyWorld="【 key world: \033[33m$2\033[0m 】"
     fi
+    charNumber=138
     if [[ "$podList" == "" ]] ;then
         printHead -t "no have pod" -N -n 4
-    elif [[ "$namespaceName" == "" ]]; then
-        printHead -n 18 -t "pod list $keyWorld" -s "-" -l 118 -N
     else
-        printHead -n 18 -t "pod list 【namespace name: \033[33m${namespaceName}\033[0m】$keyWorld" -s "-" -l 118 -N
+        charNumber=$(echo "$podList" | head -n 1 | wc -c)
+        charNumber=$((charNumber + 10))
+        if [[ "$namespaceName" == "" ]]; then
+            printHead -n 18 -t "pod list $keyWorld" -s "-" -l $((charNumber-5)) -N
+        else
+            printHead -n 18 -t "pod list 【namespace name: \033[33m${namespaceName}\033[0m】$keyWorld" -s "-" -l $((charNumber-5)) -N
+        fi
     fi
     addNum=$(echo "$podList" | head -n 1 | awk '{
         if ($1 == "INDEX" && $2 == "NAMESPACE") {
@@ -828,7 +833,7 @@ function printPodList() {
             print 0
         }
     }')
-    echo "$podList" | awk -v addNum=$addNum -v podListType="$podListType" -v podNameGroupSeparator="$podNameGroupSeparator" -v podNameSuffixNum="$podNameSuffixNum" 'BEGIN{
+    echo "$podList" | awk -v charNumber="$charNumber" -v addNum="$addNum" -v podListType="$podListType" -v podNameGroupSeparator="$podNameGroupSeparator" -v podNameSuffixNum="$podNameSuffixNum" 'BEGIN{
             previous = ""
             indexNumber = 0
         }{
@@ -860,7 +865,8 @@ function printPodList() {
             }
             if (podListType == 1) {
                 if (NR % 2 == 1) {
-                    printf "%-120s%s\n","\033[7m" $0,"\033[0m"
+                    fmt = sprintf("%%-%ds%%s\n", charNumber)
+                    printf fmt, "\033[7m" $0, "\033[0m"
                 } else {
                     print $0
                 }
@@ -871,7 +877,9 @@ function printPodList() {
                     previous = prefix
                 }
                 if (indexNumber % 2 == 1) {
-                    printf "%-126s%s\n","\033[7m" $0,"\033[0m"
+                    # printf "%-136s%s\n","\033[7m" $0,"\033[0m"
+                    fmt = sprintf("%%-%ds%%s\n", charNumber)
+                    printf fmt, "\033[7m" $0, "\033[0m"
                 } else {
                     print $0
                 }
