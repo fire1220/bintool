@@ -15,7 +15,6 @@
 # podListType : pod list style: 0 no style, 1 interlaced color change, 2 different prefixes color change, 3 prefixes with high bright words.
 # podNameSuffixNum : The number of random suffixes of # pod name, for example, WM-light-backend-6ff6c7ddb7-jhb9m is 2.
 # podNameGroupSeparator : pod name separator, for example, WM-light-backend-6ff6c7ddb7-jhb9m is "-"
-readonly isAllPods=true                             # 使用查询全部pod，不通过namespace查询
 readonly isUseRlwrap=true                           # 尽量使用增强交互
 readonly envFilePathList=("~/.rancherlogin.env")    # 存放数据的环境变量文件，多个时是从左到右优先权限使用
 readonly podListType=3                              # pod列表样式：0无样式，1隔行换色，2不同前缀换色，3前缀为高亮色字
@@ -35,6 +34,7 @@ readonly varIsFastEntry="CONST_IS_FAST_ENTRY"
 readonly envNamespacename="CONST_NAMESPACE_NAME"
 
 
+isAllPods=true                             # 使用查询全部pod，不通过namespace查询
 isRlwrap=false
 envPath=""
 for v in ${envFilePathList[@]}; do
@@ -73,7 +73,9 @@ function helpEN() {
     if [[ "$1" == "-h" ]];then
         cat <<!
         parameter:
+            -n      Filter by namespace
             -t      Enter test mode
+            --debug Print the file address where temporary
 
 !
     fi
@@ -99,8 +101,9 @@ function helpCN() {
     if [[ "$1" == "-h" ]];then
         cat <<!
     参    数：
+            -n      通过namespace进行筛选
             -t      进入测试模式，里面所有数据都是假的，用于演示
-
+            --debug 打印存放临时变量的文件地址
 !
     fi
     cat <<!
@@ -156,6 +159,10 @@ fi
 
 if [[ "$1" == "--debug" ]];then
     echo "$tempVarPath"
+fi
+
+if [[ "$1" == "-n" ]];then
+    isAllPods=false
 fi
 
 function getSetEnv(){
