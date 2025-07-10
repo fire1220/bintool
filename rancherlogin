@@ -15,6 +15,7 @@
 # podListType : pod list style: 0 no style, 1 interlaced color change, 2 different prefixes color change, 3 prefixes with high bright words.
 # podNameSuffixNum : The number of random suffixes of # pod name, for example, WM-light-backend-6ff6c7ddb7-jhb9m is 2.
 # podNameGroupSeparator : pod name separator, for example, WM-light-backend-6ff6c7ddb7-jhb9m is "-"
+readonly isAllPods=true                             # 使用查询全部pod，不通过namespace查询
 readonly isUseRlwrap=true                           # 尽量使用增强交互
 readonly envFilePathList=("~/.rancherlogin.env")    # 存放数据的环境变量文件，多个时是从左到右优先权限使用
 readonly podListType=3                              # pod列表样式：0无样式，1隔行换色，2不同前缀换色，3前缀为高亮色字
@@ -720,28 +721,22 @@ function getNamespaceName(){
 # get pod list
 function getPodList(){
     local namespaceName="$1"
+    local awkIndexAdd=0
     if [[ "$namespaceName" == "" ]];then
-        echo "parameter error, no namespaceName"
-        return 1
+        awkIndexAdd=1
+        # echo "parameter error, no namespaceName"
+        # return 1
     fi
     local selectPodKeyWork="$2"
     local podList=""
     local awkData="$(cat <<'EOT'
         BEGIN{
-            isHeader=false
             num=0
-        }$1~selectPodKeyWork{
-            num++
-            if (NR == 1 && $1 == "NAME" && $2 == "READY" && $3 == "STATUS" && $4 == "RESTARTS" && $5 == "AGE" ){
-                isHeader=true
-            }
-            if (isHeader) {
-                if (NR == 1) {
-                    printf "%6s %s\n", "INDEX", $0
-                } else {
-                    printf "%6s %s\n", num-1, $0
-                }
+        }$(1+awkIndexAdd)~selectPodKeyWork || NR == 1{
+            if (NR == 1 && $(1+awkIndexAdd) == "NAME" && $(2+awkIndexAdd) == "READY" && $(3+awkIndexAdd) == "STATUS" && $(4+awkIndexAdd) == "RESTARTS" && $(5+awkIndexAdd) == "AGE" ){
+                printf "%6s %s\n", "INDEX", $0
             } else {
+                num++
                 printf "%6s %s\n", num, $0
             }
         }
@@ -760,27 +755,42 @@ EOT
     if $isTest ;then
         podInfo="$testDataPodListInfo"
     else
-        # data format：
-        # NAME                                                          READY   STATUS              RESTARTS   AGE
-        # contract-go-v-c797f9c58-rjpc8                                 1/1     Running             0          323d
-        # cq-backend-api-85644b6b59-kbjss                               1/1     Running             0          7d23h
-        # cq-enterprise-7b57b845f9-v657n                                0/1     ContainerCreating   0          82d
-        podInfo=$(rancher kubectl get pods -n "$namespaceName" 2>&1) || {
-            printHead -t "execution failed" -T 33 -s "=" -n 18
-            printHead -t "error info：" -n 4
-            printHead -t "$podInfo" -n 8 -T 31
-            printHead '='
-            return 1
-        }
+        if [[ "$namespaceName" != "" ]]; then
+            # data format：
+            # NAME                                                          READY   STATUS              RESTARTS   AGE
+            # contract-go-v-c797f9c58-rjpc8                                 1/1     Running             0          323d
+            # cq-backend-api-85644b6b59-kbjss                               1/1     Running             0          7d23h
+            podInfo=$(rancher kubectl get pods -n "$namespaceName" 2>&1) || {
+                printHead -t "execution failed" -T 33 -s "=" -n 18
+                printHead -t "error info：" -n 4
+                printHead -t "$podInfo" -n 8 -T 31
+                printHead '='
+                return 1
+            }
+        else
+            # data format：
+            # NAMESPACE             NAME                                                              READY   STATUS      RESTARTS   AGE
+            # dake                  cq-api-go-576df89d5d-wpcx9                                        1/1     Running     0          19h
+            # dake                  cq-backend-api-6756b78b7c-22jsl                                   1/1     Running     0          2d19h
+            podInfo=$(rancher kubectl get pods --all-namespaces 2>&1) || {
+                printHead -t "execution failed" -T 33 -s "=" -n 18
+                printHead -t "error info：" -n 4
+                printHead -t "$podInfo" -n 8 -T 31
+                printHead '='
+                return 1
+            }
+        fi
     fi
     if [[ "$podInfo" =~ ^"No resources found" ]];then
         echo ""
         return 0
     fi
     if [[ "$selectPodKeyWork" == "" ]];then
-        podList=$(echo "$podInfo" | sort -n | awk "$awkDataSimple")
+        # podList=$(echo "$podInfo" | sort -n | awk "$awkDataSimple")
+        podList=$(echo "$podInfo" | awk "$awkDataSimple")
     else
-        podList=$(echo "$podInfo" | sort -n | awk -v selectPodKeyWork="$selectPodKeyWork" "$awkData")
+        # podList=$(echo "$podInfo" | sort -n | awk -v selectPodKeyWork="$selectPodKeyWork" "$awkData")
+        podList=$(echo "$podInfo" | awk -v awkIndexAdd=$awkIndexAdd -v selectPodKeyWork="$selectPodKeyWork" "$awkData")
     fi
     echo "$podList"
     return 0
@@ -796,6 +806,79 @@ function getPodCount(){
     podCount=$(($(echo "$podList" | awk '{if (NR != 1 || $2 != "NAME" || $3 != "READY" || $4 != "STATUS" || $5 != "RESTARTS" || $6 != "AGE" ) { print $0 } }' | wc -l)))
     echo "$podCount"
     return 0
+}
+
+function printPodList() {
+    local podList="$1"
+    local keyWorld=""
+    if [[ "$2" != "" ]];then
+        keyWorld="【 key world: \033[33m$2\033[0m 】"
+    fi
+    if [[ "$podList" == "" ]] ;then
+        printHead -t "no have pod" -N -n 4
+    elif [[ "$namespaceName" == "" ]]; then
+        printHead -n 18 -t "pod list $keyWorld" -s "-" -l 118 -N
+    else
+        printHead -n 18 -t "pod list 【namespace name: \033[33m${namespaceName}\033[0m】$keyWorld" -s "-" -l 118 -N
+    fi
+    addNum=$(echo "$podList" | head -n 1 | awk '{
+        if ($1 == "INDEX" && $2 == "NAMESPACE") {
+            print 1
+        } else {
+            print 0
+        }
+    }')
+    echo "$podList" | awk -v addNum=$addNum -v podListType="$podListType" -v podNameGroupSeparator="$podNameGroupSeparator" -v podNameSuffixNum="$podNameSuffixNum" 'BEGIN{
+            previous = ""
+            indexNumber = 0
+        }{
+            if (NR == 1 && $1 == "INDEX") {
+                print $0
+                next
+            }
+            prefix=""
+            if (podListType == 2 || podListType == 3) {
+                split($(2+addNum), arr, podNameGroupSeparator);
+                len=0
+                for (i in arr) {
+                    len++
+                }
+                if (len > podNameSuffixNum) {
+                    len -= podNameSuffixNum
+                }
+                for (i=1;i<=len;i++) {
+                    if (i == 1) {
+                        prefix=arr[i]
+                    } else {
+                        prefix=prefix""podNameGroupSeparator""arr[i]
+                    }
+                }
+            }
+            if (podListType == 3) {
+                pattern=prefix
+                sub(pattern,"\033[32m"prefix"\033[0m",$0)
+            }
+            if (podListType == 1) {
+                if (NR % 2 == 1) {
+                    printf "%-120s%s\n","\033[7m" $0,"\033[0m"
+                } else {
+                    print $0
+                }
+            } else if (podListType == 2) {
+                sub(/[0-9]+$/, "", prefix)
+                if (previous != prefix) {
+                    indexNumber++
+                    previous = prefix
+                }
+                if (indexNumber % 2 == 1) {
+                    printf "%-126s%s\n","\033[7m" $0,"\033[0m"
+                } else {
+                    print $0
+                }
+            } else {
+                print $0
+            }
+        }'
 }
 
 # Get pod name
@@ -983,71 +1066,19 @@ function selectPodName() {
         fi
         break
     done 
-    podName=$(echo "$podList" | awk -v num="$num" '$1==num{print $2}')
+    if [[ "$namespaceName" == "" ]];then
+        namespaceName=$(echo "$podList" | awk -v num="$num" '$1==num{print $2}')
+        podName=$(echo "$podList" | awk -v num="$num" '$1==num{print $3}')
+        if $isRlwrap ; then
+            getSetEnv -s -t -n "VAR_NAMESPACE_NAME" -v "$namespaceName" > /dev/null
+        fi
+    else
+        podName=$(echo "$podList" | awk -v num="$num" '$1==num{print $2}')
+    fi
     if $isRlwrap ; then
         getSetEnv -s -t -n "VAR_POD_NAME" -v "$podName" > /dev/null
     fi
     return 0
-}
-
-function printPodList() {
-    local podList="$1"
-    local keyWorld=""
-    if [[ "$2" != "" ]];then
-        keyWorld="【 key world: \033[33m$2\033[0m 】"
-    fi
-    if [[ "$podList" == "" ]] ;then
-        printHead -t "no have pod" -N -n 4
-    else
-        printHead -n 18 -t "pod list 【namespace name: \033[33m${namespaceName}\033[0m】$keyWorld" -s "-" -l 118 -N
-    fi
-    echo "$podList" | awk -v podListType="$podListType" -v podNameGroupSeparator="$podNameGroupSeparator" -v podNameSuffixNum="$podNameSuffixNum" 'BEGIN{
-            previous = ""
-            indexNumber = 0
-        }{
-            prefix=""
-            if (podListType == 2 || podListType == 3) {
-                split($2, arr, podNameGroupSeparator);
-                len=0
-                for (i in arr) {
-                    len++
-                }
-                if (len > podNameSuffixNum) {
-                    len -= podNameSuffixNum
-                }
-                for (i=1;i<=len;i++) {
-                    if (i == 1) {
-                        prefix=arr[i]
-                    } else {
-                        prefix=prefix""podNameGroupSeparator""arr[i]
-                    }
-                }
-            }
-            if (podListType == 3) {
-                pattern=prefix
-                sub(pattern,"\033[32m"prefix"\033[0m",$0)
-            }
-            if (podListType == 1) {
-                if (NR % 2 == 1) {
-                    printf "%-120s%s\n","\033[7m" $0,"\033[0m"
-                } else {
-                    print $0
-                }
-            } else if (podListType == 2) {
-                sub(/[0-9]+$/, "", prefix)
-                if (previous != prefix) {
-                    indexNumber++
-                    previous = prefix
-                }
-                if (indexNumber % 2 == 1) {
-                    printf "%-126s%s\n","\033[7m" $0,"\033[0m"
-                } else {
-                    print $0
-                }
-            } else {
-                print $0
-            }
-        }'
 }
 
 function main() {
@@ -1064,7 +1095,7 @@ function main() {
     local isFastEntry=false # Is it fast to enter
     local isFirstTime=true  # First execution
     for ((i=0;$i<3;i++));do
-        if $isGoBackNamespace ;then
+        if [[ "$isAllPods" == "false" && $isGoBackNamespace == "true" ]] ;then
             isGoBackNamespace=false
             namespaceSearchName=$(getSetEnv -n "$envNamespacename")
             if $isFirstTime ;then
@@ -1157,6 +1188,9 @@ function main() {
             isGoBackNamespace=$(getSetEnv -p -t -n "VAR_IS_GO_BACK_NAMESPACE")
             if [[ "$isGoBackNamespace" == "" ]];then
                 isGoBackNamespace=false
+            fi
+            if [[ "$namespaceName" == "" ]];then
+                namespaceName=$(getSetEnv -p -t -n "VAR_NAMESPACE_NAME")
             fi
             podName=$(getSetEnv -p -t -n "VAR_POD_NAME")
         else
