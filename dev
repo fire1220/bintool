@@ -2,6 +2,9 @@
 
 declare -r COMMAND_NAME="${0##*/}"
 
+readonly IsRestrictMasterBranch=true
+readonly MasterBranch="master"
+
 function helpInfo(){
     cat <<!
         command:$COMMAND_NAME
@@ -129,6 +132,19 @@ function main(){
     if [[ "$currentBranchName" == "$DevelopmentBranch" ]];then
         echo "current is target development branch"
         return 1
+    fi
+    if $IsRestrictMasterBranch ;then
+        if [[ "$MasterBranch" == "$currentBranchName" ]];then
+            while read -p "当前正在操作${MasterBranch}分支，是否继续操作：(N/y):" -r row ;do
+                if [[ "$row" == "N" || "$row" == "n" ]];then
+                    echo "exit"
+                    return 0
+                fi
+                if [[ "$row" == "Y" || "$row" == "y" ]];then
+                    break;
+                fi
+            done
+        fi
     fi
     local execList
     local gitLogOne="git --no-pager log --no-color -n 1"
