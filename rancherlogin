@@ -814,7 +814,7 @@ function getPodCount(){
         echo $podCount
         return 0
     fi
-    podCount=$(($(echo "$podList" | awk '{if (NR != 1 || $2 != "NAME" || $3 != "READY" || $4 != "STATUS" || $5 != "RESTARTS" || $6 != "AGE" ) { print $0 } }' | wc -l)))
+    podCount=$(($(echo "$podList" | awk '{if (NR != 1 || $1 != "INDEX") { print $0 } }' | wc -l)))
     echo "$podCount"
     return 0
 }
