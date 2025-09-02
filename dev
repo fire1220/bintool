@@ -136,7 +136,7 @@ function main(){
     if $IsRestrictMasterBranch ;then
         if [[ "$MasterBranch" == "$currentBranchName" ]];then
             while read -p "当前正在操作${MasterBranch}分支，是否继续操作：(N/y):" -r row ;do
-                if [[ "$row" == "N" || "$row" == "n" ]];then
+                if [[ "$row" == "N" || "$row" == "n" || "$row" == "" ]];then
                     echo "exit"
                     return 0
                 fi

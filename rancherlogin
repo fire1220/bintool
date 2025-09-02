@@ -471,6 +471,23 @@ function printNamespaceList(){
     return 0
 }
 
+# 打印错误信息
+function errInfoPrint(){
+    local errInfo="$1"
+    printHead -t "Execution failed" -T 33 -s "=" -n 18
+    printHead -t "error info：" -n 4
+    printHead -t "$errInfo" -n 8 -T 31
+    if [[ "$errInfo" =~ "login" ]] || [[ "$errInfo" =~ "Unauthorized" ]] ;then
+        printHead -t "help：" -n 4
+        printHead -t "Login operation is required：" -n 8
+        printHead -t "rancher login 'your url' --token 'your Bearer Token'" -n 12 -T33
+        printHead -t "Example：" -n 8
+        printHead -t "rancher login 'https://test.rancher.com' --token 'token-vfcfk:dgbkb4k6jlgxfj5tgrb5hhp64ztskh22lg865dj726ctpwttfdt962'" -n 12 -T33
+    fi
+    printHead '='
+    return 1
+}
+
 # get namespace list
 function getNamespaceList(){
     local namespaceNameSearch="$1"
@@ -483,14 +500,7 @@ function getNamespaceList(){
         # cattle-fleet-system           Active   116d
         # cattle-impersonation-system   Active   116d
         namespaceListInfo="$(rancher kubectl get namespaces 2>&1)" || {
-            printHead -t "Execution failed" -T 33 -s "=" -n 18
-            printHead -t "error info：" -n 4
-            printHead -t "$namespaceListInfo" -n 8 -T 31
-            if [[ "$namespaceListInfo" =~ "login" ]] || [[ "$namespaceListInfo" =~ "Unauthorized" ]] ;then
-                printHead -t "Login operation is required：" -n 4
-                printHead -t "rancher login 'your url' --token 'your Bearer Token'" -n 8 -T33
-            fi
-            printHead '='
+            errInfoPrint "$namespaceListInfo"
             return 1
         }
     fi
@@ -768,10 +778,7 @@ EOT
             # contract-go-v-c797f9c58-rjpc8                                 1/1     Running             0          323d
             # cq-backend-api-85644b6b59-kbjss                               1/1     Running             0          7d23h
             podInfo=$(rancher kubectl get pods -n "$namespaceName" 2>&1) || {
-                printHead -t "execution failed" -T 33 -s "=" -n 18
-                printHead -t "error info：" -n 4
-                printHead -t "$podInfo" -n 8 -T 31
-                printHead '='
+                errInfoPrint "$podInfo"
                 return 1
             }
         else
@@ -780,10 +787,7 @@ EOT
             # dake                  cq-api-go-576df89d5d-wpcx9                                        1/1     Running     0          19h
             # dake                  cq-backend-api-6756b78b7c-22jsl                                   1/1     Running     0          2d19h
             podInfo=$(rancher kubectl get pods --all-namespaces 2>&1) || {
-                printHead -t "execution failed" -T 33 -s "=" -n 18
-                printHead -t "error info：" -n 4
-                printHead -t "$podInfo" -n 8 -T 31
-                printHead '='
+                errInfoPrint "$podInfo"
                 return 1
             }
         fi
@@ -1187,6 +1191,7 @@ function main() {
                 $(declare -f getPodList);
                 $(declare -f getPodCount);
                 $(declare -f loading);
+                $(declare -f errInfoPrint);
                 envPath='$envPath';
                 tempVarPath='$tempVarPath';
                 podListType='$podListType';
