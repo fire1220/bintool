@@ -125,10 +125,9 @@ function helpCN() {
     if [[ "$1" == "-h" ]];then
         cat <<!
 
-    登录命令：
-        rancher login 'your url' --token 'your Bearer Token'
-
 !
+        loginHelpInfo "登录信息"
+        # errInfoPrint "login"
     fi
 }
 
@@ -144,11 +143,6 @@ function help(){
         helpEN "$1"
     fi
 }
-
-if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]];then
-    help '-h'
-    exit 0
-fi
 
 isTest=false
 if [[ "$1" == "-t" ]];then
@@ -444,9 +438,6 @@ if [[ "$?" != "0" ]];then
     exit 1
 fi
 
-help
-printHead -s "=" -N -l 128
-
 function printNamespaceList(){
     local namespaceList="$1"
     local namespaceCount="$2"
@@ -471,6 +462,31 @@ function printNamespaceList(){
     return 0
 }
 
+function loginHelpInfo(){
+    local title="$1"
+    if [[ "$title" == "" ]];then
+        title="help"
+    fi
+    local pathURL=""
+    local pathURLTemp=""
+    local yourURL="your url"
+    local yourURLExample="https://test.rancher.com"
+    pathURLTemp="$(jq -r '.Servers.rancherDefault.url' ~/.rancher/cli2.json 2>&1)" && {
+        pathURL="：${pathURLTemp}"
+        yourURL="$pathURLTemp"
+        yourURLExample="$pathURLTemp"
+    }
+    printHead -t "${title}：" -n 4
+    printHead -t "Login：" -n 8
+    printHead -t "rancher login '${yourURL}' --token 'your Bearer Token'" -n 12 -T33
+    printHead -t "Example：" -n 8
+    printHead -t "rancher login '${yourURLExample}' --token 'token-vfcfk:dgbkb4k6jlgxfj5tgrb5hhp64ztskh22lg865dj726ctpwttfdt962'" -n 12 -T33
+    printHead -t "token配置位置：" -n 8
+    printHead -t "1.打开网站${pathURL}" -n 12 -T33
+    printHead -t "2.点击右上角头像 -> 'Account & API Keys' -> 'Create API Key' -> Create" -n 12 -T33
+    printHead -t "3.在 'Bearer Token' 一栏中点击 'Copy' " -n 12 -T33
+}
+
 # 打印错误信息
 function errInfoPrint(){
     local errInfo="$1"
@@ -478,11 +494,7 @@ function errInfoPrint(){
     printHead -t "error info：" -n 4
     printHead -t "$errInfo" -n 8 -T 31
     if [[ "$errInfo" =~ "login" ]] || [[ "$errInfo" =~ "Unauthorized" ]] ;then
-        printHead -t "help：" -n 4
-        printHead -t "Login operation is required：" -n 8
-        printHead -t "rancher login 'your url' --token 'your Bearer Token'" -n 12 -T33
-        printHead -t "Example：" -n 8
-        printHead -t "rancher login 'https://test.rancher.com' --token 'token-vfcfk:dgbkb4k6jlgxfj5tgrb5hhp64ztskh22lg865dj726ctpwttfdt962'" -n 12 -T33
+        loginHelpInfo "需要登录操作"
     fi
     printHead '='
     return 1
@@ -1104,6 +1116,15 @@ function main() {
     if [ -f "$envPath" ];then
         . $envPath
     fi
+
+    if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]];then
+        help '-h'
+        exit 0
+    fi
+
+    help
+    printHead -s "=" -N -l 128
+
     local namespaceName=""
     local podName=""
     local isGoBackNamespace=true   # Do you want to return to the namespace and re execute
@@ -1273,5 +1294,5 @@ testDataPodListInfo="$(cat <<'EOT'
 EOT
 )"
 
-main
+main "$@"
 exit 0
