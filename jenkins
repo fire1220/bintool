@@ -946,7 +946,7 @@ function progressPod() {
                 n="\n"
             fi
             local printTemp="$(printf "\033[31m${rowData}\033[0m" | perl -pe 's/\e\[[0-9;]*[mK]//g')"
-            local chinaNum="$(echo ${printTemp} | grep -o -E '[一-龥]|【|】' | wc -l)"
+            local chinaNum="$(echo ${printTemp} | grep -o '[一-龥【】]' | wc -l)"
             local upNumTemp="$(echo $(((${#printTemp} + ${chinaNum}) / $cols)))"
             upNum=$(($upNum+$upNumTemp))
             tempPrintStr="${tempPrintStr}${n}  ${rowData}"
