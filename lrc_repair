@@ -1,0 +1,14 @@
+#!/bin/bash
+# 把音乐歌词文件里的时间格式化
+# 例如      [02:10.1234]Man on a Mission - Oh The Larceny
+# 格式化成  [02:10.00]Man on a Mission - Oh The Larceny
+
+temp="temp.txt"
+touch $temp
+for k in *.lrc;do
+    cat "$k" | sed 's/\(\[[0-9]\{2\}:[0-9]\{2\}.\)[0-9]*/\100/' > $temp
+    cat $temp > "$k"
+done
+rm -rf $temp
+
+
