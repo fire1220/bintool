@@ -789,8 +789,9 @@ EOT
             # NAME                                                          READY   STATUS              RESTARTS   AGE
             # contract-go-v-c797f9c58-rjpc8                                 1/1     Running             0          323d
             # cq-backend-api-85644b6b59-kbjss                               1/1     Running             0          7d23h
-            podInfo=$(rancher kubectl get pods -n "$namespaceName") || {
-                errInfoPrint "$podInfo"
+            podInfo=$(rancher kubectl get pods -n "$namespaceName" 2>&1) || {
+                # errInfoPrint "$podInfo"
+                loginHelpInfo "$podInfo"
                 return 1
             }
         else
@@ -798,8 +799,8 @@ EOT
             # NAMESPACE             NAME                                                              READY   STATUS      RESTARTS   AGE
             # dake                  cq-api-go-576df89d5d-wpcx9                                        1/1     Running     0          19h
             # dake                  cq-backend-api-6756b78b7c-22jsl                                   1/1     Running     0          2d19h
-            podInfo=$(rancher kubectl get pods --all-namespaces) || {
-                errInfoPrint "$podInfo"
+            podInfo=$(rancher kubectl get pods --all-namespaces 2>&1) || {
+                loginHelpInfo "$podInfo"
                 return 1
             }
         fi
@@ -1213,6 +1214,7 @@ function main() {
                 $(declare -f getPodCount);
                 $(declare -f loading);
                 $(declare -f errInfoPrint);
+                $(declare -f loginHelpInfo);
                 envPath='$envPath';
                 tempVarPath='$tempVarPath';
                 podListType='$podListType';
