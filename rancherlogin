@@ -809,14 +809,22 @@ EOT
         echo ""
         return 0
     fi
+
+    firstRow=$(head -n 1 <<< "$podInfo")
+    if [[ "$firstRow" =~ ^time= ]];then
+        podInfo=$(tail -n +2 <<< "$podInfo")
+    else
+        firstRow=""
+    fi
     if [[ "$selectPodKeyWork" == "" ]];then
-        # podList=$(echo "$podInfo" | sort -n | awk "$awkDataSimple")
         podList=$(echo "$podInfo" | awk "$awkDataSimple")
     else
-        # podList=$(echo "$podInfo" | sort -n | awk -v selectPodKeyWork="$selectPodKeyWork" "$awkData")
         podList=$(echo "$podInfo" | awk -v awkIndexAdd=$awkIndexAdd -v selectPodKeyWork="$selectPodKeyWork" "$awkData")
     fi
     echo "$podList"
+    if [[ "$firstRow" != "" ]];then
+        echo "$firstRow"
+    fi
     return 0
 }
 
@@ -850,7 +858,7 @@ function printPodList() {
             printHead -n 18 -t "pod list 【namespace name: \033[33m${namespaceName}\033[0m】$keyWorld" -s "-" -l $((charNumber-5)) -N
         fi
     fi
-    addNum=$(echo "$podList" | head -n 1 | awk '{
+    addNum=$(head -n 1 <<< "$podList" | awk '{
         if ($1 == "INDEX" && $2 == "NAMESPACE") {
             print 1
         } else {
@@ -861,7 +869,7 @@ function printPodList() {
             previous = ""
             indexNumber = 0
         }{
-            if (NR == 1 && $1 == "INDEX") {
+            if ($1 !~ /^[0-9]+$/) {
                 print $0
                 next
             }
