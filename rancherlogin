@@ -842,9 +842,10 @@ function getPodCount(){
 
 function printPodList() {
     local podList="$1"
-    local keyWorld=""
-    if [[ "$2" != "" ]];then
-        keyWorld="【 key world: \033[33m$2\033[0m 】"
+    local keyWorld="$2"
+    local keyWorldStr=""
+    if [[ "$keyWorld" != "" ]];then
+        keyWorldStr="【 key world: \033[33m$keyWorld\033[0m 】"
     fi
     charNumber=138
     if [[ "$podList" == "" ]] ;then
@@ -853,9 +854,9 @@ function printPodList() {
         charNumber=$(echo "$podList" | head -n 1 | wc -c)
         charNumber=$((charNumber + 10))
         if [[ "$namespaceName" == "" ]]; then
-            printHead -n 18 -t "pod list $keyWorld" -s "-" -l $((charNumber-5)) -N
+            printHead -n 18 -t "pod list $keyWorldStr" -s "-" -l $((charNumber-5)) -N
         else
-            printHead -n 18 -t "pod list 【namespace name: \033[33m${namespaceName}\033[0m】$keyWorld" -s "-" -l $((charNumber-5)) -N
+            printHead -n 18 -t "pod list 【namespace name: \033[33m${namespaceName}\033[0m】$keyWorldStr" -s "-" -l $((charNumber-5)) -N
         fi
     fi
     addNum=$(head -n 1 <<< "$podList" | awk '{
@@ -865,37 +866,100 @@ function printPodList() {
             print 0
         }
     }')
-    echo "$podList" | awk -v charNumber="$charNumber" -v addNum="$addNum" -v podListType="$podListType" -v podNameGroupSeparator="$podNameGroupSeparator" -v podNameSuffixNum="$podNameSuffixNum" 'BEGIN{
+
+    local rowArrLen=()
+    if [[ "$podListType" == "3" ]];then
+        rowArrLen=($(awk '{
+                for(i=1;i<=NF;i++) {
+                    if(length($i) > width[i]) width[i] = length($i)
+                }
+            }END{
+                for(i=1;i<=NF;i++) {
+                    print width[i]
+                }
+            }' <<< "$podList"))
+    fi
+
+    awk -v charNumber="$charNumber" \
+        -v addNum="$addNum" \
+        -v podListType="$podListType" \
+        -v podNameGroupSeparator="$podNameGroupSeparator" \
+        -v podNameSuffixNum="$podNameSuffixNum" \
+        -v keyWorld="$keyWorld" \
+        -v rowArrLen="${rowArrLen[*]}" \
+        'BEGIN{
             previous = ""
             indexNumber = 0
+            split(rowArrLen, arrRowMix, " ")
+            x="\033[32m\033[0m"
+            # x="ABCDE"
+            print length(x)
         }{
             if ($1 !~ /^[0-9]+$/) {
-                print $0
+                if (podListType == 3) {
+                    for (i = 1; i <= NF; i++) {
+                        printf "%-*s\t", arrRowMix[i], $i
+                    }
+                    printf "\n"
+                } else {
+                    print $0
+                }
                 next
             }
             prefix=""
+            suffix=""
             if (podListType == 2 || podListType == 3) {
                 split($(2+addNum), arr, podNameGroupSeparator);
                 len=0
                 for (i in arr) {
                     len++
                 }
-                if (len > podNameSuffixNum) {
-                    len -= podNameSuffixNum
+                prefixLen=len
+                if (prefixLen > podNameSuffixNum) {
+                    prefixLen -= podNameSuffixNum
                 }
                 for (i=1;i<=len;i++) {
-                    if (i == 1) {
-                        prefix=arr[i]
+                    if (i<=prefixLen) {
+                        if (i == 1) {
+                            prefix=arr[i]
+                        } else {
+                            prefix=prefix""podNameGroupSeparator""arr[i]
+                        }
                     } else {
-                        prefix=prefix""podNameGroupSeparator""arr[i]
+                        suffix=suffix""podNameGroupSeparator""arr[i]
                     }
                 }
             }
             if (podListType == 3) {
-                pattern=prefix
-                sub(pattern,"\033[32m"prefix"\033[0m",$0)
-            }
-            if (podListType == 1) {
+                threeAddWeight=0
+                # sub(prefix,"\033[32m"prefix"\033[0m",$0)
+                # print $0
+                if(keyWorld == "") {
+                    sub(prefix,"\033[32m"prefix"\033[0m",$3)
+                    threeAddWeight=9
+                }else if(prefix ~ keyWorld) {
+                    gsub(prefix,"\033[32m"prefix"\033[0m",$3)
+                    gsub(keyWorld,"\033[33m"keyWorld"\033[32m",$3)
+                    threeAddWeight=19
+                } else if(suffix ~ keyWorld) {
+                    sub(prefix,"\033[32m"prefix"\033[0m",$3)
+                    sub(keyWorld,"\033[33m"keyWorld"\033[0m",$3)
+                    threeAddWeight=18
+                } else {
+                    sub(prefix,"\033[32m"prefix,$3)
+                    sub(keyWorld,"\033[33m"keyWorld"\033[0m",$3)
+                    threeAddWeight=14
+                }
+                for (i = 1; i <= NF; i++) {
+                    # printf "%i_%+*s\t", arrRowMix[i], arrRowMix[i], $i
+                    if (i == 3) {
+                        printf "%-*s\t", arrRowMix[i]+threeAddWeight, $i
+                    } else {
+                        printf "%-*s\t", arrRowMix[i], $i
+                    }
+                }
+                printf "\n"
+            } else if (podListType == 1) {
                 if (NR % 2 == 1) {
                     fmt = sprintf("%%-%ds%%s\n", charNumber)
                     printf fmt, "\033[7m" $0, "\033[0m"
@@ -918,7 +982,7 @@ function printPodList() {
             } else {
                 print $0
             }
-        }'
+        }' <<< "$podList"
 }
 
 # Get pod name
