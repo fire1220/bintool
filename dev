@@ -3,7 +3,7 @@
 declare -r COMMAND_NAME="${0##*/}"
 
 readonly IsRestrictMasterBranch=true
-readonly MasterBranch="master"
+readonly MasterBranch="main"
 
 function helpInfo(){
     cat <<!
