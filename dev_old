@@ -13,7 +13,6 @@ function helpInfo(){
         参数：
             -s / --self         只提交到当前分支，不进行切换分支
             -j / --jenkins      把commit_id作为参数,传递给jenkins命令
-            -v                  使用VPN连接执行命令，执行完成后断开VPN连接
             --jenkins_xxx=xxx   把xxx=xxx作为参数,传递给jenkins命令,例如：--jenkins_restart=restart-0259
             CommitInfo          提交的git commit 信息
 
@@ -31,10 +30,9 @@ function helpInfo(){
 
 declare IsPostJenkins=false
 declare IsNoCheckout=false
-declare IsVPN=false
 declare -a JenkinsParams=()
 OPTIND=1
-while getopts ":-:jshv" opt;do
+while getopts ":-:jsh" opt;do
     case "$opt" in
         s)
             IsNoCheckout=true
@@ -44,9 +42,6 @@ while getopts ":-:jshv" opt;do
             ;;
         j)
             IsPostJenkins=true
-            ;;
-        v)
-            IsVPN=true
             ;;
         -)
             argKeyLong=${OPTARG%%=*}
@@ -121,126 +116,6 @@ function git_current_branch() {
     }
   fi
   echo ${ref#refs/heads/}
-}
-
-declare -r VPN_LIST=(
-    "/opt/cisco/anyconnect/bin/vpn:ciscoAnyconnectVPN_func"
-    # "openvpnLogin:openvpn_func"
-)
-declare -r VPN_STSTUS_ON="on"
-declare -r VPN_STSTUS_OFF="off"
-
-function ciscoAnyconnectVPN_func() {
-    local vpnFuncPath="$1"
-    local vpnStatus="$2"
-    if ! $(command -v "$vpnFuncPath" > /dev/null 2>&1);then
-        echo >&2 "命令未找到：$vpnFuncPath"
-        return 1
-    fi
-    if [[ "$vpnStatus" != "$VPN_STSTUS_ON" ]] && [[ "$vpnStatus" != "$VPN_STSTUS_OFF" ]];then
-        echo >&2 "状态错误：请输入VPN状态：on/off"
-        return 2
-    fi
-    local errorCountNum=0
-    local vpnAddress=""
-    local bashName=$(basename "$SHELL")
-    if [[ "$CISCO_ANYCONNECT_VPN_HOST" != "" ]];then
-        vpnAddress="$CISCO_ANYCONNECT_VPN_HOST"
-    elif [[ "$bashName" == "bash" ]];then
-        if [[ -f ~/.bashrc ]];then
-            vpnAddress=$(grep 'CISCO_ANYCONNECT_VPN_HOST' ~/.bashrc | tail -n1 | awk -F'[ =]+' '{print $NF}')
-            CISCO_ANYCONNECT_VPN_HOST="$vpnAddress"
-        fi
-    elif [[ "$bashName" == "zsh" ]];then
-        if [[ -f ~/.zshrc ]];then
-            vpnAddress=$(grep 'CISCO_ANYCONNECT_VPN_HOST' ~/.zshrc | tail -n1 | awk -F'[ =]+' '{print $NF}')
-            CISCO_ANYCONNECT_VPN_HOST="$vpnAddress"
-        fi
-    fi
-    if [[ "$vpnAddress" == "" ]];then
-        while read -p "请输入VPN连接的服务器地址:" -r vpnServerAddress ;do
-            if [[ "$vpnServerAddress" != "" ]];then
-                vpnAddress="$vpnServerAddress"
-                break
-            fi
-            ((errorCountNum++))
-            if ((errorCountNum >= 3));then
-                echo >&2 "输入错误次数过多，退出"
-                return 1
-            fi
-        done
-    fi
-    local actionCmd="connect"
-    if [[ "$vpnStatus" == "$VPN_STSTUS_OFF" ]];then
-        actionCmd="disconnect"
-    fi
-    currentBranchNameTemp=$(git_current_branch) || {
-        return 1
-    }
-    commandPrefix="\033[32m[$(date '+%F %T')] \033[36m$dirName\033[32m (\033[31;1m$currentBranchNameTemp\033[0;32m)\033[1m ➜ \033[0m"
-    echo  -e "${commandPrefix}\033[33m${vpnFuncPath} ${actionCmd} ${vpnAddress}\033[0m"
-    $vpnFuncPath "$actionCmd" "$vpnAddress"
-    if [[ "$CISCO_ANYCONNECT_VPN_HOST" == "" ]];then
-        local vpnStatusMsg=$($vpnFuncPath stats|grep 'Connection State' |grep -v Management|awk -F'[: ]+' '{print $NF}')
-        if [[ "$vpnStatusMsg" == "Connected" ]];then
-            if [[ "$bashName" == "bash" ]];then
-                echo "export CISCO_ANYCONNECT_VPN_HOST=$vpnAddress" >> ~/.bashrc
-                . ~/.bashrc
-            elif [[ "$bashName" == "zsh" ]];then
-                echo "export CISCO_ANYCONNECT_VPN_HOST=$vpnAddress" >> ~/.zshrc
-            fi
-        fi
-    fi
-}
-
-function openvpn_func() {
-    echo ""
-}
-
-
-function useVPN() {
-    if ! $IsVPN ;then
-        return 0
-    fi
-    local vpnStatus="$1"
-    if [[ "$vpnStatus" != "$VPN_STSTUS_ON" ]] && [[ "$vpnStatus" != "$VPN_STSTUS_OFF" ]];then
-        echo >&2 "状态错误：请输入VPN状态：on/off"
-        return 2
-    fi
-    local availableVpnList=()
-    for v in ${VPN_LIST[@]};do
-        cmdStr="${v%:*}"
-        if command -v "$cmdStr" > /dev/null 2>&1;then
-            availableVpnList+=("$cmdStr")
-        fi
-    done
-    local vpnFuncInfo=""
-    if [[ "${#availableVpnList[@]}" == "1" ]];then
-        vpnFuncInfo="${VPN_LIST[0]}"
-    else
-        local k=0
-        for val in ${availableVpnList[@]} ;do
-            ((k++))
-            printf " %s\t%s\n" "$k" "$val"
-        done
-        local errorCountNum=0
-        while read -p "请选择VPN连接（输入序号[1-${#availableVpnList[@]}]）:" -r vpnIndex ;do
-            if [[ "${vpnIndex}" =~ ^[1-9]+$ ]];then
-                vpnFuncInfo="${VPN_LIST[$vpnIndex-1]}"
-                if [[ "$vpnFuncInfo" != "" ]];then
-                    break
-                fi
-            fi
-            ((errorCountNum++))
-            if ((errorCountNum >= 3));then
-                echo >&2 "输入错误次数过多，退出"
-                return 1
-            fi
-        done
-    fi
-    local vpnFuncName="${vpnFuncInfo#*:}"
-    local vpnFuncPath="${vpnFuncInfo%:*}"
-    $vpnFuncName "$vpnFuncPath" "$vpnStatus"
 }
 
 function main(){
@@ -369,6 +244,6 @@ function main(){
     fi
 }
 
-useVPN "$VPN_STSTUS_ON"
 main
-useVPN "$VPN_STSTUS_OFF"
+
+
