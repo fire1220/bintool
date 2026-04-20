@@ -1,7 +1,7 @@
 #!/bin/bash
 
-declare -r COMMAND_NAME="${0##*/}"
-declare -r DIR_NAME=$(basename "$(pwd)")
+declare -r COMMAND_NAME="$(basename "$0")"
+declare -r DIR_NAME="$(basename "$PWD")"
 
 readonly IsRestrictMasterBranch=true
 readonly MasterBranch="main"
