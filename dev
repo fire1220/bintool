@@ -131,8 +131,10 @@ declare -r VPN_LIST=(
 declare -r VPN_STSTUS_ON="on"
 declare -r VPN_STSTUS_OFF="off"
 declare VpnCurrentStatus=false
+declare VpnCurrentAppIsOpen=false
 
 function ciscoAnyconnectVPN_func() {
+    local vpnAppName="Cisco AnyConnect Secure Mobility Client"
     local vpnFuncPath="$1"
     local vpnStatus="$2"
     if ! $(command -v "$vpnFuncPath" > /dev/null 2>&1);then
@@ -188,6 +190,13 @@ function ciscoAnyconnectVPN_func() {
             echo  -e "${commandPrefix}\033[33mVPN 已连接，无需重复连接 \033[0m"
             return 0
         fi
+        if [[ "$vpnStatusMsg" == "Disconnected" ]];then
+            echo  -e "${commandPrefix}\033[33mVPN 软件已打开但是未链接，尝试关闭图形客户端 \033[0m"
+            pkill -f "$vpnAppName"
+            if [[ "$?" == "0" ]];then
+                VpnCurrentAppIsOpen=true
+            fi
+        fi
     elif ${VpnCurrentStatus} && [[ "$vpnStatus" == "$VPN_STSTUS_OFF" ]];then
         echo  -e "${commandPrefix}\033[33mVPN 原本就是已连接状态，无需执行断开连接操作 \033[0m"
         return 0
@@ -195,6 +204,12 @@ function ciscoAnyconnectVPN_func() {
 
     echo  -e "${commandPrefix}\033[33m${vpnFuncPath} ${actionCmd} ${vpnAddress}\033[0m"
     $vpnFuncPath "$actionCmd" "$vpnAddress"
+
+    if ${VpnCurrentAppIsOpen} && [[ "$vpnStatus" == "$VPN_STSTUS_OFF" ]];then
+        echo  -e "${commandPrefix}\033[33mVPN 尝试打开图形客户端软件 \033[0m"
+        open -a "$vpnAppName"
+    fi
+
     if [[ "$CISCO_ANYCONNECT_VPN_HOST" == "" ]];then
         local vpnStatusMsg=$($vpnFuncPath stats|grep 'Connection State' |grep -v Management|awk -F'[: ]+' '{print $NF}')
         if [[ "$vpnStatusMsg" == "Connected" ]];then
