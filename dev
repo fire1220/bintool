@@ -15,8 +15,9 @@ function helpInfo(){
             -s / --self         只提交到当前分支，不进行切换分支
             -j / --jenkins      把commit_id作为参数,传递给jenkins命令
             -v                  使用VPN连接执行命令，执行完成后断开VPN连接
+                                    目前支持的VPN类型有：
+                                        Cisco AnyConnect Secure Mobility Client
             --jenkins_xxx=xxx   把xxx=xxx作为参数,传递给jenkins命令,例如：--jenkins_restart=restart-0259
-            CommitInfo          提交的git commit 信息
 
         说明：
             会把git的"当前分支"合并到"${COMMAND_NAME}"开发分支
