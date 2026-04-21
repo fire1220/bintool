@@ -156,9 +156,9 @@ function setEnvIfEmpty(){
     local bashName=$(basename "$SHELL")
     local bashPath=""
     if [[ "$bashName" == "bash" ]];then
-        bashPath="~/.bashrc"
+        bashPath="$HOME/.bashrc"
     elif [[ "$bashName" == "zsh" ]];then
-        bashPath="~/.zshrc"
+        bashPath="$HOME/.zshrc"
     fi
     echo "export $envName=$envVal" >> "$bashPath"
 }
