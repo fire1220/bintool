@@ -36,7 +36,12 @@ function helpInfo(){
                                                  MacOS: ~/.zshrc
             MASTER_BRANCH_LIST               受限制的主分支列表，默认值为"master main"
                                              如果需要修改，设置环境变量覆盖即可，多个分支使用空格分隔
-                                             例如：export MASTER_BRANCH_LIST="master main branch1 branch2"
+                                                例如：export MASTER_BRANCH_LIST="master main branch1 branch2"
+            DEVELOPMENT_MERGE_RULE_PREFIX    合并分支规则前缀，格式为 prefix1:targetBranch1,prefix2:targetBranch2
+                                             如果设置了这个环境变量，在执行脚本时会根据当前分支名匹配对应的前缀，找到目标分支进行合并
+                                             也可以通过命令行参数--rule-prefix临时指定规则前缀，优先级高于环境变量
+                                                例如：export DEVELOPMENT_MERGE_RULE_PREFIX="dev-:dev,feature-:feature"
+                                                      表示以dev-和feature-开头的分支分别合并到dev和feature分支上
 
         example:
             $COMMAND_NAME "提交并且合并到${COMMAND_NAME}分支"
@@ -206,12 +211,20 @@ function git_current_branch() {
 }
 
 function getDevelopmentBranchByRulePrefix(){
-    local devBranch="$DevelopmentBranch"
-    if [[ "$RulePrefix" == "" ]];then
-        echo "$devBranch"
+    local rulePrefixData=""
+    local tempData=""
+    if [[ -n "$RulePrefix" ]];then
+        rulePrefixData="$RulePrefix"
+        tempData="参数传递的规则前缀"
+    elif [[ -n "$DEVELOPMENT_MERGE_RULE_PREFIX" ]];then
+        rulePrefixData="$DEVELOPMENT_MERGE_RULE_PREFIX"
+        tempData="环境变量的规则前缀"
+    fi
+    if [[ "$rulePrefixData" == "" ]];then
+        printFormat "未设置规则前缀，默认合并到${DevelopmentBranch}分支"
         return 0
     fi
-    for val in $(echo "$RulePrefix" |tr ',' '\n');do
+    for val in $(echo "$rulePrefixData" |tr ',' '\n');do
         if [[ "$val" != *:* ]];then
             echo  >&2 "--rule-prefix=$val 格式错误, 格式需是： prefix1:targetBranch1,prefix2:targetBranch2"
             return 1
@@ -220,12 +233,13 @@ function getDevelopmentBranchByRulePrefix(){
         local targetBranch="${val#*:}"
         if [[ "$prefix" != "" ]] && [[ "$targetBranch" != "" ]];then
             if [[ "$(git_current_branch)" == "$prefix"* ]];then
-                devBranch="$targetBranch"
-                break
+                printFormat "当前分支匹配到了${tempData}${prefix}，合并到${targetBranch}分支"
+                return 0
             fi
         fi
     done
-    echo "$devBranch"
+    printFormat "当前分支没有匹配到任何规则前缀，默认合并到${DevelopmentBranch}分支"
+    return 0
 }
 
 function isInMasterBranchList(){
@@ -386,8 +400,8 @@ function mergeDevelopmentBranch(){
         return $tempCode
     }
 
-    DevelopmentBranch="$(getDevelopmentBranchByRulePrefix 2>&1)" || {
-        echo "$DevelopmentBranch"
+    getDevelopmentBranchByRulePrefix || {
+        return 1
     }
 
     if [[ "$currentBranchName" == "$DevelopmentBranch" ]];then
@@ -504,11 +518,13 @@ function mergeDevelopmentBranch(){
 }
 
 function main(){
+    local retCode=0
     useVPN "$VPN_STSTUS_ON"
     mergeDevelopmentBranch || {
-        return 1
+        retCode=1
     }
     useVPN "$VPN_STSTUS_OFF"
+    return $retCode
 }
 
 main
