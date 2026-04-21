@@ -4,7 +4,7 @@ declare -r COMMAND_NAME="$(basename "$0")"
 declare -r DIR_NAME="$(basename "$PWD")"
 
 readonly IsRestrictMasterBranch=true
-declare -a MasterBranchList=("master" "main")
+declare -a MasterBranchList=("master" "main" "17poker")
 
 function helpInfo(){
     cat <<!
@@ -45,8 +45,10 @@ declare OnlyPushSelf=false
 declare IsVPN=false
 declare -a JenkinsParams=()
 declare RulePrefix=""
+declare MergeBranch=""
+declare MergeRequest=""
 OPTIND=1
-while getopts ":r:-:jshv" opt;do
+while getopts ":r:m:M:-:jshv" opt;do
     case "$opt" in
         s)
             OnlyPushSelf=true
@@ -62,6 +64,12 @@ while getopts ":r:-:jshv" opt;do
             ;;
         r)
             RulePrefix="$OPTARG"
+            ;;
+        m)
+            MergeBranch="$OPTARG"
+            ;;
+        M)
+            MergeRequest="$OPTARG"
             ;;
         -)
             argKeyLong=${OPTARG%%=*}
@@ -322,7 +330,7 @@ function useVPN() {
     $vpnFuncName "$vpnFuncPath" "$vpnStatus"
 }
 
-function main(){
+function mergeDevelopmentBranch(){
     local currentBranchName
     currentBranchName=$(git_current_branch) || {
         local tempCode="$?"
@@ -451,6 +459,10 @@ function main(){
     fi
 }
 
-useVPN "$VPN_STSTUS_ON"
+function main(){
+    useVPN "$VPN_STSTUS_ON"
+    mergeDevelopmentBranch
+    useVPN "$VPN_STSTUS_OFF"
+}
+
 main
-useVPN "$VPN_STSTUS_OFF"
