@@ -4,10 +4,11 @@ declare -r COMMAND_NAME="$(basename "$0")"
 declare -r DIR_NAME="$(basename "$PWD")"
 
 readonly IsRestrictMasterBranch=true
-declare -a MasterBranchList=("master" "main" "17poker")
+declare -a MasterBranchList=("master" "main")
 
 function helpInfo(){
     cat <<!
+
         command:$COMMAND_NAME
             $COMMAND_NAME [-sjvr] [ --jenkins | --rule-prefix ] "CommitInfo"
 
@@ -25,12 +26,17 @@ function helpInfo(){
             会把git的"当前分支"合并到"${COMMAND_NAME}"开发分支
             如果想变更要合并的开发分支，修改脚本名称即可
         
-        涉及环境变量：
-            CISCO_ANYCONNECT_VPN_ADDRESS        Cisco AnyConnect VPN连接的服务器地址
-                                                    第一次链接成功后会自动保存到环境变量里，如果想删除则,删除对应的环境变量即可
-                                                    环境变量位置：
-                                                        Linux: ~/.bashrc
-                                                        MacOS: ~/.zshrc
+        环境变量：
+            CISCO_ANYCONNECT_VPN_ADDRESS     Cisco AnyConnect VPN连接的服务器地址
+                                             手动配置例如：export CISCO_ANYCONNECT_VPN_ADDRESS=http://example.com
+                                             第一次链接成功后会自动保存到环境变量里
+                                             如果想删除,直接删除环境变量或者删除对应的配置行即可
+                                             环境变量位置：
+                                                 Linux: ~/.bashrc
+                                                 MacOS: ~/.zshrc
+            MASTER_BRANCH_LIST               受限制的主分支列表，默认值为"master main"
+                                             如果需要修改，设置环境变量覆盖即可，多个分支使用空格分隔
+                                             例如：export MASTER_BRANCH_LIST="master main branch1 branch2"
 
         example:
             $COMMAND_NAME "提交并且合并到${COMMAND_NAME}分支"
@@ -224,6 +230,14 @@ function getDevelopmentBranchByRulePrefix(){
 
 function isInMasterBranchList(){
     local currentBranchName="$1"
+    if [[ -n "$MASTER_BRANCH_LIST" ]];then
+        for v in $MASTER_BRANCH_LIST ;do
+            if [[ "$currentBranchName" == "$v" ]];then
+                return 0
+            fi
+        done
+        return 1
+    fi
     for v in ${MasterBranchList[@]} ;do
         if [[ "$currentBranchName" == "$v" ]];then
             return 0
