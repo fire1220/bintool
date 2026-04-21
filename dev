@@ -14,10 +14,12 @@ function helpInfo(){
         参数：
             -s / --self         只提交到当前分支，不进行切换分支
             -j / --jenkins      把commit_id作为参数,传递给jenkins命令
+            --jenkins_xxx=xxx   把xxx=xxx作为参数,传递给jenkins命令,例如：--jenkins_restart=restart-0259
             -v                  使用VPN连接执行命令，执行完成后断开VPN连接
                                     目前支持的VPN类型有：
                                         Cisco AnyConnect Secure Mobility Client
-            --jenkins_xxx=xxx   把xxx=xxx作为参数,传递给jenkins命令,例如：--jenkins_restart=restart-0259
+            -r / --rule-prefix  指定前缀的分支合并到指定分支上,如果没有设置则目标分支默认为${COMMAND_NAME}分支
+                                    格式如：-r dev_:dev,dev2_:dev2 表示以dev_和dev2_开头的分支分别合并到dev和dev2分支上
 
         说明：
             会把git的"当前分支"合并到"${COMMAND_NAME}"开发分支
@@ -35,8 +37,9 @@ declare IsPostJenkins=false
 declare IsNoCheckout=false
 declare IsVPN=false
 declare -a JenkinsParams=()
+declare RulePrefix=""
 OPTIND=1
-while getopts ":-:jshv" opt;do
+while getopts ":r:-:jshv" opt;do
     case "$opt" in
         s)
             IsNoCheckout=true
@@ -50,10 +53,16 @@ while getopts ":-:jshv" opt;do
         v)
             IsVPN=true
             ;;
+        r)
+            RulePrefix="$OPTARG"
+            ;;
         -)
             argKeyLong=${OPTARG%%=*}
             if [[ "$OPTARG" =~ = ]];then
                 case "$argKeyLong" in
+                    "rule-prefix")
+                        RulePrefix="${OPTARG#*=}"
+                        ;;
                     *)
                         if [[ "$argKeyLong" =~ ^jenkins_ ]];then
                             JenkinsParams+=("--${OPTARG#jenkins_}")
@@ -82,7 +91,7 @@ while getopts ":-:jshv" opt;do
 done
 shift $(($OPTIND-1))
 
-readonly DevelopmentBranch="$COMMAND_NAME"
+declare DevelopmentBranch="$COMMAND_NAME"
 
 declare -r COMMIT_INFO="$1"
 if [[ "$COMMIT_INFO" == "" ]];then
@@ -123,6 +132,29 @@ function git_current_branch() {
     }
   fi
   echo ${ref#refs/heads/}
+}
+
+function getDevelopmentBranchByRulePrefix(){
+    local devBranch="$DevelopmentBranch"
+    if [[ "$RulePrefix" == "" ]];then
+        echo "$devBranch"
+        return 0
+    fi
+    for val in $(echo "$RulePrefix" |tr ',' '\n');do
+        if [[ "$val" != *:* ]];then
+            echo  >&2 "--rule-prefix=$val 格式错误, 格式需是： prefix1:targetBranch1,prefix2:targetBranch2"
+            return 1
+        fi
+        local prefix="${val%%:*}"
+        local targetBranch="${val#*:}"
+        if [[ "$prefix" != "" ]] && [[ "$targetBranch" != "" ]];then
+            if [[ "$(git_current_branch)" == "$prefix"* ]];then
+                devBranch="$targetBranch"
+                break
+            fi
+        fi
+    done
+    echo "$devBranch"
 }
 
 declare -r VPN_LIST=(
@@ -283,6 +315,11 @@ function main(){
         fi
         return $tempCode
     }
+
+    DevelopmentBranch="$(getDevelopmentBranchByRulePrefix 2>&1)" || {
+        echo "$DevelopmentBranch"
+    }
+
     if [[ "$currentBranchName" == "$DevelopmentBranch" ]];then
         echo "current is target development branch"
         return 1
