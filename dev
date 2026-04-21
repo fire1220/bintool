@@ -298,7 +298,7 @@ function ciscoAnyconnectVPN_func() {
             return 0
         fi
         if [[ "$vpnStatusMsg" == "Disconnected" ]];then
-            ps -ef | grep "$vpnAppName" | grep -v 'grep' && {
+            ps -ef | grep "$vpnAppName" | grep -v 'grep' > /dev/null 2>&1 && {
                 pkill -f "$vpnAppName" && {
                     printFormat "VPN 软件已打开但是未链接，尝试关闭图形客户端"
                     VpnCurrentAppIsOpen=true
