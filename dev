@@ -45,8 +45,8 @@ declare OnlyPushSelf=false
 declare IsVPN=false
 declare -a JenkinsParams=()
 declare RulePrefix=""
-declare MergeBranch=""
-declare MergeRequest=""
+declare MergeBranch=""  # 功能完善有待商议
+declare MergeRequest="" # 功能完善有待商议
 OPTIND=1
 while getopts ":r:m:M:-:jshv" opt;do
     case "$opt" in
@@ -113,6 +113,55 @@ if [[ "$COMMIT_INFO" == "" ]];then
     echo "input commit info"
     exit 1
 fi
+
+function printFormat(){
+    local data="$1"
+    local currentBranchNameTemp
+    currentBranchNameTemp=$(git_current_branch) || {
+        return 1
+    }
+    local commandPrefix="\033[32m[$(date '+%F %T')] \033[36m$DIR_NAME\033[32m (\033[31;1m$currentBranchNameTemp\033[0;32m)\033[1m ➜ \033[0m"
+    echo -e "${commandPrefix}\033[33m$data\033[0m"
+}
+
+function getEnv(){
+    local envName="$1"
+    if [[ -z "$envName" ]];then
+        echo ""
+        return 0
+    fi
+    envVal="${!envName}"
+    if [[ -z "$envVal" ]];then
+        local bashName=$(basename "$SHELL")
+        if [[ "$bashName" == "bash" ]] && [[ -f ~/.bashrc ]] ;then
+            envVal=$(grep "$envName" ~/.bashrc | tail -n1 | awk -F'[ =]+' '{print $NF}')
+        fi
+        if [[ "$bashName" == "zsh" ]] && [[ -f ~/.zshrc ]];then
+            envVal=$(grep "$envName" ~/.zshrc | tail -n1 | awk -F'[ =]+' '{print $NF}')
+        fi
+    fi
+    echo "$envVal"
+    return 0
+}
+
+function setEnvIfEmpty(){
+    local envName="$1"
+    local envVal="$2"
+    if [[ -z "$envName" ]] || [[ -z "$envVal" ]];then
+        return 0
+    fi
+    if [[ -n "$(getEnv "$envName")" ]];then
+        return 0
+    fi
+    local bashName=$(basename "$SHELL")
+    local bashPath=""
+    if [[ "$bashName" == "bash" ]];then
+        bashPath="~/.bashrc"
+    elif [[ "$bashName" == "zsh" ]];then
+        bashPath="~/.zshrc"
+    fi
+    echo "export $envName=$envVal" >> "$bashPath"
+}
 
 function getCurrentBranchName(){
     local branchList
@@ -192,6 +241,7 @@ declare VpnCurrentStatus=false
 declare VpnCurrentAppIsOpen=false
 
 function ciscoAnyconnectVPN_func() {
+    local envName="CISCO_ANYCONNECT_VPN_ADDRESS"
     local vpnAppName="Cisco AnyConnect Secure Mobility Client"
     local vpnFuncPath="$1"
     local vpnStatus="$2"
@@ -204,21 +254,21 @@ function ciscoAnyconnectVPN_func() {
         return 2
     fi
     local errorCountNum=0
-    local vpnAddress=""
-    local bashName=$(basename "$SHELL")
-    if [[ "$CISCO_ANYCONNECT_VPN_ADDRESS" != "" ]];then
-        vpnAddress="$CISCO_ANYCONNECT_VPN_ADDRESS"
-    elif [[ "$bashName" == "bash" ]];then
-        if [[ -f ~/.bashrc ]];then
-            vpnAddress=$(grep 'CISCO_ANYCONNECT_VPN_ADDRESS' ~/.bashrc | tail -n1 | awk -F'[ =]+' '{print $NF}')
-            CISCO_ANYCONNECT_VPN_ADDRESS="$vpnAddress"
-        fi
-    elif [[ "$bashName" == "zsh" ]];then
-        if [[ -f ~/.zshrc ]];then
-            vpnAddress=$(grep 'CISCO_ANYCONNECT_VPN_ADDRESS' ~/.zshrc | tail -n1 | awk -F'[ =]+' '{print $NF}')
-            CISCO_ANYCONNECT_VPN_ADDRESS="$vpnAddress"
-        fi
-    fi
+    vpnAddress="$(getEnv "$envName")"
+    # local bashName=$(basename "$SHELL")
+    # if [[ "$CISCO_ANYCONNECT_VPN_ADDRESS" != "" ]];then
+    #     vpnAddress="$CISCO_ANYCONNECT_VPN_ADDRESS"
+    # elif [[ "$bashName" == "bash" ]];then
+    #     if [[ -f ~/.bashrc ]];then
+    #         vpnAddress=$(grep 'CISCO_ANYCONNECT_VPN_ADDRESS' ~/.bashrc | tail -n1 | awk -F'[ =]+' '{print $NF}')
+    #         CISCO_ANYCONNECT_VPN_ADDRESS="$vpnAddress"
+    #     fi
+    # elif [[ "$bashName" == "zsh" ]];then
+    #     if [[ -f ~/.zshrc ]];then
+    #         vpnAddress=$(grep 'CISCO_ANYCONNECT_VPN_ADDRESS' ~/.zshrc | tail -n1 | awk -F'[ =]+' '{print $NF}')
+    #         CISCO_ANYCONNECT_VPN_ADDRESS="$vpnAddress"
+    #     fi
+    # fi
     if [[ "$vpnAddress" == "" ]];then
         while read -p "请输入VPN连接的服务器地址:" -r vpnServerAddress ;do
             if [[ "$vpnServerAddress" != "" ]];then
@@ -239,46 +289,58 @@ function ciscoAnyconnectVPN_func() {
     currentBranchNameTemp=$(git_current_branch) || {
         return 1
     }
-    commandPrefix="\033[32m[$(date '+%F %T')] \033[36m$DIR_NAME\033[32m (\033[31;1m$currentBranchNameTemp\033[0;32m)\033[1m ➜ \033[0m"
+    # commandPrefix="\033[32m[$(date '+%F %T')] \033[36m$DIR_NAME\033[32m (\033[31;1m$currentBranchNameTemp\033[0;32m)\033[1m ➜ \033[0m"
 
     if [[ "$vpnStatus" == "$VPN_STSTUS_ON" ]];then
         local vpnStatusMsg=$($vpnFuncPath stats|grep 'Connection State' |grep -v Management|awk -F'[: ]+' '{print $NF}')
         if [[ "$vpnStatusMsg" == "Connected" ]];then
             VpnCurrentStatus=true
-            echo  -e "${commandPrefix}\033[33mVPN 已连接，无需重复连接 \033[0m"
+            # echo  -e "${commandPrefix}\033[33mVPN 已连接，无需重复连接 \033[0m"
+            printFormat "VPN 已连接，无需重复连接"
             return 0
         fi
         if [[ "$vpnStatusMsg" == "Disconnected" ]];then
-            echo  -e "${commandPrefix}\033[33mVPN 软件已打开但是未链接，尝试关闭图形客户端 \033[0m"
+            # echo  -e "${commandPrefix}\033[33mVPN 软件已打开但是未链接，尝试关闭图形客户端 \033[0m"
+            printFormat "VPN 软件已打开但是未链接，尝试关闭图形客户端"
             pkill -f "$vpnAppName"
             if [[ "$?" == "0" ]];then
                 VpnCurrentAppIsOpen=true
             fi
         fi
     elif ${VpnCurrentStatus} && [[ "$vpnStatus" == "$VPN_STSTUS_OFF" ]];then
-        echo  -e "${commandPrefix}\033[33mVPN 原本就是已连接状态，无需执行断开连接操作 \033[0m"
+        # echo  -e "${commandPrefix}\033[33mVPN 原本就是已连接状态，无需执行断开连接操作 \033[0m"
+        printFormat "VPN 原本就是已连接状态，无需执行断开连接操作"
         return 0
     fi
 
-    echo  -e "${commandPrefix}\033[33m${vpnFuncPath} ${actionCmd} ${vpnAddress}\033[0m"
+    # echo  -e "${commandPrefix}\033[33m${vpnFuncPath} ${actionCmd} ${vpnAddress}\033[0m"
+    printFormat "${vpnFuncPath} ${actionCmd} ${vpnAddress}"
     $vpnFuncPath "$actionCmd" "$vpnAddress"
 
     if ${VpnCurrentAppIsOpen} && [[ "$vpnStatus" == "$VPN_STSTUS_OFF" ]];then
-        echo  -e "${commandPrefix}\033[33mVPN 尝试打开图形客户端软件 \033[0m"
+        # echo  -e "${commandPrefix}\033[33mVPN 尝试打开图形客户端软件 \033[0m"
+        printFormat "VPN 尝试打开图形客户端软件"
         open -a "$vpnAppName"
     fi
 
-    if [[ "$CISCO_ANYCONNECT_VPN_ADDRESS" == "" ]];then
+    if [[ "${!envName}" == "" ]];then
         local vpnStatusMsg=$($vpnFuncPath stats|grep 'Connection State' |grep -v Management|awk -F'[: ]+' '{print $NF}')
         if [[ "$vpnStatusMsg" == "Connected" ]];then
-            if [[ "$bashName" == "bash" ]];then
-                echo "export CISCO_ANYCONNECT_VPN_ADDRESS=$vpnAddress" >> ~/.bashrc
-                . ~/.bashrc
-            elif [[ "$bashName" == "zsh" ]];then
-                echo "export CISCO_ANYCONNECT_VPN_ADDRESS=$vpnAddress" >> ~/.zshrc
-            fi
+            setEnvIfEmpty "$envName" "$vpnAddress"
         fi
     fi
+
+    # if [[ "$CISCO_ANYCONNECT_VPN_ADDRESS" == "" ]];then
+    #     local vpnStatusMsg=$($vpnFuncPath stats|grep 'Connection State' |grep -v Management|awk -F'[: ]+' '{print $NF}')
+    #     if [[ "$vpnStatusMsg" == "Connected" ]];then
+    #         if [[ "$bashName" == "bash" ]];then
+    #             echo "export CISCO_ANYCONNECT_VPN_ADDRESS=$vpnAddress" >> ~/.bashrc
+    #             . ~/.bashrc
+    #         elif [[ "$bashName" == "zsh" ]];then
+    #             echo "export CISCO_ANYCONNECT_VPN_ADDRESS=$vpnAddress" >> ~/.zshrc
+    #         fi
+    #     fi
+    # fi
 }
 
 function openvpn_func() {
@@ -397,8 +459,9 @@ function mergeDevelopmentBranch(){
         currentBranchNameTemp=$(git_current_branch) || {
             return 1
         }
-        commandPrefix="\033[32m[$dateTime] \033[36m$DIR_NAME\033[32m (\033[31;1m$currentBranchNameTemp\033[0;32m)\033[1m ➜ \033[0m"
-        echo  -e "${commandPrefix}\033[33m${commandStr}\033[0m"
+        # commandPrefix="\033[32m[$dateTime] \033[36m$DIR_NAME\033[32m (\033[31;1m$currentBranchNameTemp\033[0;32m)\033[1m ➜ \033[0m"
+        # echo  -e "${commandPrefix}\033[33m${commandStr}\033[0m"
+        printFormat "$commandStr"
 
         if [[ "$commandStr" == "$gitLogOne" ]];then
             commitId=$(eval "$commandStr" | head -n1 | awk '{print $2}')
@@ -427,7 +490,8 @@ function mergeDevelopmentBranch(){
                     for val in "${conflictExecList[@]}" ;do
                         dateTime=$(date '+%F %T')
                         implemented="$val"
-                        echo  -e "${commandPrefix}\033[33m${val}\033[0m"
+                        # echo  -e "${commandPrefix}\033[33m${val}\033[0m"
+                        printFormat "$val"
                         eval "$val" || {
                             return 1
                         }
@@ -444,7 +508,7 @@ function mergeDevelopmentBranch(){
             currentBranchNameTemp=$(git_current_branch) || {
                 return 1
             }
-            commandPrefix="\033[32m[$dateTime] \033[36m$DIR_NAME\033[32m (\033[31;1m$currentBranchNameTemp\033[0;32m)\033[1m ➜ \033[0m"
+            # commandPrefix="\033[32m[$dateTime] \033[36m$DIR_NAME\033[32m (\033[31;1m$currentBranchNameTemp\033[0;32m)\033[1m ➜ \033[0m"
             declare params=""
             for v in "${JenkinsParams[@]}"; do
                 params="${params} $v"
@@ -453,7 +517,8 @@ function mergeDevelopmentBranch(){
             if [[ "$params" != "" ]];then
                 evalStr="jenkins${params} \"$commitId\""
             fi
-            echo  -e "${commandPrefix}\033[33m${evalStr}\033[0m"
+            # echo  -e "${commandPrefix}\033[33m${evalStr}\033[0m"
+            printFormat "$evalStr"
             eval "$evalStr"
         fi
     fi
