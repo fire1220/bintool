@@ -4,7 +4,8 @@ declare -r COMMAND_NAME="$(basename "$0")"
 declare -r DIR_NAME="$(basename "$PWD")"
 
 readonly IsRestrictMasterBranch=true
-readonly MasterBranch="main"
+# readonly MasterBranch="main"
+declare -a MasterBranchList=("master" "main")
 
 function helpInfo(){
     cat <<!
@@ -155,6 +156,16 @@ function getDevelopmentBranchByRulePrefix(){
         fi
     done
     echo "$devBranch"
+}
+
+function isInMasterBranchList(){
+    local currentBranchName="$1"
+    for v in ${MasterBranchList[@]} ;do
+        if [[ "$currentBranchName" == "$v" ]];then
+            return 0
+        fi
+    done
+    return 1
 }
 
 declare -r VPN_LIST=(
@@ -325,8 +336,8 @@ function main(){
         return 1
     fi
     if $IsRestrictMasterBranch ;then
-        if [[ "$MasterBranch" == "$currentBranchName" ]];then
-            while read -p "当前正在操作${MasterBranch}分支，是否继续操作：(N/y):" -r row ;do
+        isInMasterBranchList "$currentBranchName" && {
+            while read -p "当前正在操作${currentBranchName}分支，是否继续操作：(N/y):" -r row ;do
                 if [[ "$row" == "N" || "$row" == "n" || "$row" == "" ]];then
                     echo "exit"
                     return 0
@@ -335,7 +346,18 @@ function main(){
                     break;
                 fi
             done
-        fi
+        }
+        # if [[ "$MasterBranch" == "$currentBranchName" ]];then
+        #     while read -p "当前正在操作${MasterBranch}分支，是否继续操作：(N/y):" -r row ;do
+        #         if [[ "$row" == "N" || "$row" == "n" || "$row" == "" ]];then
+        #             echo "exit"
+        #             return 0
+        #         fi
+        #         if [[ "$row" == "Y" || "$row" == "y" ]];then
+        #             break;
+        #         fi
+        #     done
+        # fi
     fi
     local execList
     local gitLogOne="git --no-pager log --no-color -n 1"
