@@ -9,7 +9,7 @@ readonly MasterBranch="main"
 function helpInfo(){
     cat <<!
         command:$COMMAND_NAME
-            $COMMAND_NAME [-nj] [--jenkins] "CommitInfo"
+            $COMMAND_NAME [-sjvr] [--jenkins|--rule-prefix] "CommitInfo"
 
         参数：
             -s / --self         只提交到当前分支，不进行切换分支
@@ -27,14 +27,14 @@ function helpInfo(){
         
         example:
             $COMMAND_NAME "提交并且合并到${COMMAND_NAME}分支"
-            $COMMAND_NAME -n "只提交到当前分支"
+            $COMMAND_NAME -s "只提交到当前分支"
 
 !
     exit 0
 }
 
 declare IsPostJenkins=false
-declare IsNoCheckout=false
+declare OnlyPushSelf=false
 declare IsVPN=false
 declare -a JenkinsParams=()
 declare RulePrefix=""
@@ -42,7 +42,7 @@ OPTIND=1
 while getopts ":r:-:jshv" opt;do
     case "$opt" in
         s)
-            IsNoCheckout=true
+            OnlyPushSelf=true
             ;;
         h)
             helpInfo
@@ -79,7 +79,7 @@ while getopts ":r:-:jshv" opt;do
                         IsPostJenkins=true
                         ;;
                     "self")
-                        IsNoCheckout=true
+                        OnlyPushSelf=true
                         ;;
                     *)
                         ;;
@@ -352,7 +352,7 @@ function main(){
         "$gitLogOne"
         "git checkout $currentBranchName"
     );
-    if $IsNoCheckout ;then
+    if $OnlyPushSelf ;then
         execList=(
             "git --no-pager diff"
             "git add -A"
