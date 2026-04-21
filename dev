@@ -270,7 +270,6 @@ function openvpn_func() {
     echo ""
 }
 
-
 function useVPN() {
     if ! $IsVPN ;then
         return 0
