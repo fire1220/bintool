@@ -270,20 +270,6 @@ function ciscoAnyconnectVPN_func() {
     fi
     local errorCountNum=0
     vpnAddress="$(getEnv "$envName")"
-    # local bashName=$(basename "$SHELL")
-    # if [[ "$CISCO_ANYCONNECT_VPN_ADDRESS" != "" ]];then
-    #     vpnAddress="$CISCO_ANYCONNECT_VPN_ADDRESS"
-    # elif [[ "$bashName" == "bash" ]];then
-    #     if [[ -f ~/.bashrc ]];then
-    #         vpnAddress=$(grep 'CISCO_ANYCONNECT_VPN_ADDRESS' ~/.bashrc | tail -n1 | awk -F'[ =]+' '{print $NF}')
-    #         CISCO_ANYCONNECT_VPN_ADDRESS="$vpnAddress"
-    #     fi
-    # elif [[ "$bashName" == "zsh" ]];then
-    #     if [[ -f ~/.zshrc ]];then
-    #         vpnAddress=$(grep 'CISCO_ANYCONNECT_VPN_ADDRESS' ~/.zshrc | tail -n1 | awk -F'[ =]+' '{print $NF}')
-    #         CISCO_ANYCONNECT_VPN_ADDRESS="$vpnAddress"
-    #     fi
-    # fi
     if [[ "$vpnAddress" == "" ]];then
         while read -p "请输入VPN连接的服务器地址:" -r vpnServerAddress ;do
             if [[ "$vpnServerAddress" != "" ]];then
@@ -339,18 +325,6 @@ function ciscoAnyconnectVPN_func() {
             setEnvIfEmpty "$envName" "$vpnAddress"
         fi
     fi
-
-    # if [[ "$CISCO_ANYCONNECT_VPN_ADDRESS" == "" ]];then
-    #     local vpnStatusMsg=$($vpnFuncPath stats|grep 'Connection State' |grep -v Management|awk -F'[: ]+' '{print $NF}')
-    #     if [[ "$vpnStatusMsg" == "Connected" ]];then
-    #         if [[ "$bashName" == "bash" ]];then
-    #             echo "export CISCO_ANYCONNECT_VPN_ADDRESS=$vpnAddress" >> ~/.bashrc
-    #             . ~/.bashrc
-    #         elif [[ "$bashName" == "zsh" ]];then
-    #             echo "export CISCO_ANYCONNECT_VPN_ADDRESS=$vpnAddress" >> ~/.zshrc
-    #         fi
-    #     fi
-    # fi
 }
 
 function openvpn_func() {
