@@ -232,7 +232,7 @@ function main(){
     for cmd in ${vpnMainCmd[@]};do
         if [[ "$mainCmd" == "$cmd" ]];then
             useVPN "$VPN_STSTUS_ON"
-            c=(git "${@}")
+            local c=(git "${@}")
             printFormat "${c[@]}"
             "${c[@]}" 
             local retCode=$?
@@ -240,7 +240,10 @@ function main(){
             return $retCode
         fi
     done
-    $mainCmd "$@"
+    local c=(git "${@}")
+    printFormat "${c[@]}"
+    "${c[@]}" 
+    return $?
 }
 
 main "$@"
