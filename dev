@@ -59,6 +59,8 @@ fi
 
 set -- $envParamsArgs "$@"
 
+declare RulePrefixEnv="$(getEnv "DEVELOPMENT_MERGE_RULE_PREFIX")"
+
 declare IsPostJenkins=false
 declare OnlyPushSelf=false
 declare IsVPN=false
@@ -83,6 +85,7 @@ while getopts ":r:m:M:-:jshv" opt;do
             ;;
         r)
             RulePrefix="$OPTARG"
+            RulePrefixEnv=""
             ;;
         m)
             MergeBranch="$OPTARG"
@@ -96,7 +99,7 @@ while getopts ":r:m:M:-:jshv" opt;do
                 case "$argKeyLong" in
                     "rule-prefix")
                         RulePrefix="${OPTARG#*=}"
-                        echo "kkk"
+                        RulePrefixEnv=""
                         ;;
                     *)
                         if [[ "$argKeyLong" =~ ^jenkins_ ]];then
@@ -227,8 +230,8 @@ function getDevelopmentBranchByRulePrefix(){
     if [[ -n "$RulePrefix" ]];then
         rulePrefixData="$RulePrefix"
         tempData="参数传递的规则前缀"
-    elif [[ -n "$DEVELOPMENT_MERGE_RULE_PREFIX" ]];then
-        rulePrefixData="$DEVELOPMENT_MERGE_RULE_PREFIX"
+    elif [[ -n "$RulePrefixEnv" ]];then
+        rulePrefixData="$RulePrefixEnv"
         tempData="环境变量的规则前缀"
     fi
     if [[ "$rulePrefixData" == "" ]];then
