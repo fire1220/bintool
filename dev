@@ -234,7 +234,7 @@ function getDevelopmentBranchByRulePrefix(){
         rulePrefixData="$RulePrefixEnv"
         tempData="环境变量的规则前缀"
     fi
-    if [[ "$rulePrefixData" == "" ]];then
+    if [[ "$rulePrefixData" == "" ]] && ! $OnlyPushSelf ;then
         printFormat "未设置规则前缀，默认合并到${DevelopmentBranch}分支"
         return 0
     fi
