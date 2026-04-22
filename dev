@@ -59,7 +59,7 @@ fi
 
 set -- $envParamsArgs "$@"
 
-declare RulePrefixEnv="$(getEnv "DEVELOPMENT_MERGE_RULE_PREFIX")"
+declare RulePrefixEnv="$DEVELOPMENT_MERGE_RULE_PREFIX"
 
 declare IsPostJenkins=false
 declare OnlyPushSelf=false
