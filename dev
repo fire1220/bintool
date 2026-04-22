@@ -3,7 +3,7 @@
 declare -r COMMAND_NAME="$(basename "$0")"
 declare -r DIR_NAME="$(basename "$PWD")"
 
-readonly IsRestrictMasterBranch=true
+declare IsRestrictMasterBranch=true
 declare -a MasterBranchList=("master" "main")
 
 function helpInfo(){
@@ -114,6 +114,9 @@ while getopts ":r:m:M:-:jshv" opt;do
                         ;;
                     "self")
                         OnlyPushSelf=true
+                        ;;
+                    "not-restrict-master-branch")
+                        IsRestrictMasterBranch=false
                         ;;
                     *)
                         ;;
