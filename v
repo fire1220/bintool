@@ -109,7 +109,16 @@ function ciscoAnyconnectVPN_func() {
     fi
 
     printFormat "${vpnFuncPath} ${actionCmd} ${vpnAddress}"
-    $vpnFuncPath "$actionCmd" "$vpnAddress"
+    $vpnFuncPath "$actionCmd" "$vpnAddress" > /dev/null 2>&1 || {
+        echo >&2 "执行VPN命令失败：$vpnFuncPath $actionCmd $vpnAddress"
+        return 1
+    }
+    # if [[ "$vpnStatus" == "$VPN_STSTUS_ON" ]];then
+    #     local vpnStatusMsg=$($vpnFuncPath stats|grep 'Connection State' |grep -v Management|awk -F'[: ]+' '{print $NF}')
+    #     if [[ "$vpnStatusMsg" == "Connected" ]];then
+    #         printFormat "VPN 已连接"
+    #     fi
+    # fi
 
     if ${VpnCurrentAppIsOpen} && [[ "$vpnStatus" == "$VPN_STSTUS_OFF" ]];then
         printFormat "VPN 尝试打开图形客户端软件"
@@ -199,23 +208,12 @@ function git_current_branch() {
 }
 
 function main(){
-    mainCmd="$1"
-    vpnMainCmd=("pull" "push" "fetch")
-    for cmd in ${vpnMainCmd[@]};do
-        if [[ "$mainCmd" == "$cmd" ]];then
-            useVPN "$VPN_STSTUS_ON"
-            local c=(git "${@}")
-            printFormat "${c[@]}"
-            "${c[@]}" 
-            local retCode=$?
-            useVPN "$VPN_STSTUS_OFF"
-            return $retCode
-        fi
-    done
-    local c=(git "${@}")
-    printFormat "${c[@]}"
-    "${c[@]}"
-    return $?
+    useVPN "$VPN_STSTUS_ON"
+    printFormat "${@}"
+    "${@}"
+    local retCode=$?
+    useVPN "$VPN_STSTUS_OFF"
+    return $retCode
 }
 
 main "$@"
