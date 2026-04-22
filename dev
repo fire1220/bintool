@@ -234,6 +234,7 @@ function getDevelopmentBranchByRulePrefix(){
         if [[ "$prefix" != "" ]] && [[ "$targetBranch" != "" ]];then
             if [[ "$(git_current_branch)" == "$prefix"* ]];then
                 printFormat "当前分支匹配到了${tempData}${prefix}，合并到${targetBranch}分支"
+                DevelopmentBranch="$targetBranch"
                 return 0
             fi
         fi
