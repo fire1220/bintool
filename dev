@@ -225,6 +225,9 @@ function git_current_branch() {
 }
 
 function getDevelopmentBranchByRulePrefix(){
+    if [[ "$OnlyPushSelf" == true ]] ;then
+        return 0
+    fi
     local rulePrefixData=""
     local tempData=""
     if [[ -n "$RulePrefix" ]];then
@@ -234,7 +237,7 @@ function getDevelopmentBranchByRulePrefix(){
         rulePrefixData="$RulePrefixEnv"
         tempData="环境变量的规则前缀"
     fi
-    if [[ "$rulePrefixData" == "" ]] && ! $OnlyPushSelf ;then
+    if [[ "$rulePrefixData" == "" ]];then
         printFormat "未设置规则前缀，默认合并到${DevelopmentBranch}分支"
         return 0
     fi
