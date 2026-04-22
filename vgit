@@ -242,7 +242,7 @@ function main(){
     done
     local c=(git "${@}")
     printFormat "${c[@]}"
-    "${c[@]}" 
+    "${c[@]}"
     return $?
 }
 
