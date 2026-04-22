@@ -1,1 +1,1 @@
--s --not-restrict-master-branch
+-s --not-restrict-master-branch --rule-prefix=""
