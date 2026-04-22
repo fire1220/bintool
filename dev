@@ -52,6 +52,15 @@ function helpInfo(){
     exit 0
 }
 
+envArgs=""
+if [[ -f .development_merge_params ]]; then
+    envArgs=$(cat .development_merge_params)
+fi
+
+# 合并环境参数和命令行参数
+# 命令行参数优先级更高
+set -- $envArgs "$@"
+
 declare IsPostJenkins=false
 declare OnlyPushSelf=false
 declare IsVPN=false
