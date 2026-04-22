@@ -1,1 +1,1 @@
--s
+-s --not-restrict-master-branch
