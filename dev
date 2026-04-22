@@ -96,6 +96,7 @@ while getopts ":r:m:M:-:jshv" opt;do
                 case "$argKeyLong" in
                     "rule-prefix")
                         RulePrefix="${OPTARG#*=}"
+                        echo "kkk"
                         ;;
                     *)
                         if [[ "$argKeyLong" =~ ^jenkins_ ]];then
