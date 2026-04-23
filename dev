@@ -57,7 +57,9 @@ if [[ -f .development_merge_params ]]; then
     envParamsArgs=$(cat .development_merge_params)
 fi
 
+echo "$@"
 set -- $envParamsArgs "$@"
+echo "$@"
 
 declare RulePrefixEnv="$DEVELOPMENT_MERGE_RULE_PREFIX"
 
