@@ -88,7 +88,7 @@ function git_current_branch() {
 }
 
 function printFormat(){
-    local data="$1"
+    local data="$@"
     local currentBranchNameTemp
     currentBranchNameTemp=$(git_current_branch) || {
         return 1
