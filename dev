@@ -379,6 +379,9 @@ function useVPN() {
             availableVpnList+=("$cmdStr")
         fi
     done
+    if [[ "${#availableVpnList[@]}" == "0" ]];then
+        return 0
+    fi
     local vpnFuncInfo=""
     if [[ "${#availableVpnList[@]}" == "1" ]];then
         vpnFuncInfo="${VPN_LIST[0]}"
