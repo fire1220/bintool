@@ -52,14 +52,60 @@ function helpInfo(){
     exit 0
 }
 
+function getCurrentBranchName(){
+    local branchList
+    local grepList
+    local currentBranchName
+    branchList=$(git branch) || {
+        return 11
+    }
+    grepList=$(echo "$branchList" | grep "*") || {
+        echo "grep no find branch" >&2
+        return 12
+    }
+    currentBranchName=$(echo "$grepList" | awk '{print $2}')
+    if [[ "$currentBranchName" == "" ]] ;then
+        echo "awk no find branch name" >&2
+        return 13
+    fi
+    echo "$currentBranchName"
+    return 0
+}
+
+function git_current_branch() {
+  local ref
+  ref=$(git symbolic-ref --quiet HEAD 2> /dev/null)
+  local ret=$?
+  if [[ $ret != 0 ]]; then
+    [[ $ret == 128 ]] && {
+        return 21 # no git repo.
+    }
+    ref=$(git rev-parse --short HEAD 2> /dev/null) || {
+        return 22
+    }
+  fi
+  echo ${ref#refs/heads/}
+}
+
+function printFormat(){
+    local data="$1"
+    local currentBranchNameTemp
+    currentBranchNameTemp=$(git_current_branch) || {
+        return 1
+    }
+    local commandPrefix="\033[32m[$(date '+%F %T')] \033[36m$DIR_NAME\033[32m (\033[31;1m$currentBranchNameTemp\033[0;32m)\033[1m ➜ \033[0m"
+    echo -e "${commandPrefix}\033[33m$data\033[0m"
+}
+
 envParamsArgs=""
 if [[ -f .development_merge_params ]]; then
     envParamsArgs=$(cat .development_merge_params)
 fi
-
-echo "$@"
+paramsBegin="$@"
 set -- $envParamsArgs "$@"
-echo "$@"
+if [[ "$@" != "$paramsBegin" ]];then
+    printFormat "$COMMAND_NAME" "$@"
+fi
 
 declare RulePrefixEnv="$DEVELOPMENT_MERGE_RULE_PREFIX"
 
@@ -142,16 +188,6 @@ if [[ "$COMMIT_INFO" == "" ]];then
     exit 1
 fi
 
-function printFormat(){
-    local data="$1"
-    local currentBranchNameTemp
-    currentBranchNameTemp=$(git_current_branch) || {
-        return 1
-    }
-    local commandPrefix="\033[32m[$(date '+%F %T')] \033[36m$DIR_NAME\033[32m (\033[31;1m$currentBranchNameTemp\033[0;32m)\033[1m ➜ \033[0m"
-    echo -e "${commandPrefix}\033[33m$data\033[0m"
-}
-
 function getEnv(){
     local envName="$1"
     if [[ -z "$envName" ]];then
@@ -189,41 +225,6 @@ function setEnvIfEmpty(){
         bashPath="$HOME/.zshrc"
     fi
     echo "export $envName=$envVal" >> "$bashPath"
-}
-
-function getCurrentBranchName(){
-    local branchList
-    local grepList
-    local currentBranchName
-    branchList=$(git branch) || {
-        return 11
-    }
-    grepList=$(echo "$branchList" | grep "*") || {
-        echo "grep no find branch" >&2
-        return 12
-    }
-    currentBranchName=$(echo "$grepList" | awk '{print $2}')
-    if [[ "$currentBranchName" == "" ]] ;then
-        echo "awk no find branch name" >&2
-        return 13
-    fi
-    echo "$currentBranchName"
-    return 0
-}
-
-function git_current_branch() {
-  local ref
-  ref=$(git symbolic-ref --quiet HEAD 2> /dev/null)
-  local ret=$?
-  if [[ $ret != 0 ]]; then
-    [[ $ret == 128 ]] && {
-        return 21 # no git repo.
-    }
-    ref=$(git rev-parse --short HEAD 2> /dev/null) || {
-        return 22
-    }
-  fi
-  echo ${ref#refs/heads/}
 }
 
 function getDevelopmentBranchByRulePrefix(){
