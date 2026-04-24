@@ -43,6 +43,14 @@ function helpInfo(){
                                                 例如：export DEVELOPMENT_MERGE_RULE_PREFIX="dev-:dev,feature-:feature"
                                                       表示以dev-和feature-开头的分支分别合并到dev和feature分支上
 
+        项目配置：
+            文件名称：.development_merge_params
+            说明：
+                可以在项目根目录创建一个名为.development_merge_params的文件，然后把命令${COMMAND_NAME}的参数写入该文件中：
+            例如：
+                -v --rule-prefix=prefix1:targetBranch1,prefix2:targetBranch2
+                这样就可以使用VPN并且提交合并的时候会匹配前缀选择要合并的分支，优先级高于环境变量，但是小于命令行参数
+
         example:
             $COMMAND_NAME "提交并且合并到${COMMAND_NAME}分支"
             $COMMAND_NAME -s "只提交到当前分支"
