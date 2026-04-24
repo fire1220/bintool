@@ -13,14 +13,20 @@ function helpInfo(){
             $COMMAND_NAME [-sjvr] [ --jenkins | --rule-prefix ] "CommitInfo"
 
         参数：
-            -s / --self         只提交到当前分支，不进行切换分支
-            -j / --jenkins      把commit_id作为参数,传递给jenkins命令
-            --jenkins_xxx=xxx   把xxx=xxx作为参数,传递给jenkins命令,例如：--jenkins_restart=restart-0259
-            -v                  使用VPN连接执行命令，执行完成后断开VPN连接
-                                    目前支持的VPN类型有：
-                                        Cisco AnyConnect Secure Mobility Client
-            -r / --rule-prefix  指定前缀的分支合并到指定分支上,如果没有设置则目标分支默认为${COMMAND_NAME}分支
-                                    格式如：-r dev_:dev,dev2_:dev2 表示以dev_和dev2_开头的分支分别合并到dev和dev2分支上
+            -h / --help                     显示帮助信息
+            -s / --self                     只提交到当前分支，不进行切换分支
+            -j / --jenkins                  把commit_id作为参数,传递给jenkins命令
+            --jenkins_xxx=xxx               把xxx=xxx作为参数,传递给jenkins命令,例如：--jenkins_restart=restart-0259
+            -v                              使用VPN连接执行命令，执行完成后断开VPN连接
+                                                目前支持的VPN类型有：
+                                                    Cisco AnyConnect Secure Mobility Client
+            --anyconnect-vpn-address=""     Cisco AnyConnect VPN连接的服务器地址，
+                                                配合-v参数使用
+                                                可以通过环境变量CISCO_ANYCONNECT_VPN_ADDRESS设置默认地址，
+                                                或者在执行脚本时输入地址，输入成功后会自动保存到环境变量里，方便下次使用
+            --not-restrict-master-branch    不限制主分支，默认会限制master和main分支，执行脚本时如果当前分支是受限制的主分支会有提示，确认后才会继续执行
+            -r / --rule-prefix              指定前缀的分支合并到指定分支上,如果没有设置则目标分支默认为${COMMAND_NAME}分支
+                                                格式如：-r dev_:dev,dev2_:dev2 表示以dev_和dev2_开头的分支分别合并到dev和dev2分支上
 
         说明：
             会把git的"当前分支"合并到"${COMMAND_NAME}"开发分支
@@ -373,7 +379,7 @@ function ciscoAnyconnectVPN_func() {
         open -a "$vpnAppName"
     fi
 
-    if [[ "${!envName}" == "" ]];then
+    if [[ "${!envName}" == "" ]] && [[ "$AnyconnectVpnAddress" == "" ]] ;then
         local vpnStatusMsg=$($vpnFuncPath stats|grep 'Connection State' |grep -v Management|awk -F'[: ]+' '{print $NF}')
         if [[ "$vpnStatusMsg" == "Connected" ]];then
             setEnvIfEmpty "$envName" "$vpnAddress"
