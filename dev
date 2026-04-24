@@ -115,6 +115,9 @@ if [[ "$@" != "$paramsBegin" ]];then
     printFormat "$COMMAND_NAME" "$@"
 fi
 
+
+declare AnyconnectVpnAddress=""
+
 declare RulePrefixEnv="$DEVELOPMENT_MERGE_RULE_PREFIX"
 
 declare IsPostJenkins=false
@@ -156,6 +159,9 @@ while getopts ":r:m:M:-:jshv" opt;do
                     "rule-prefix")
                         RulePrefix="${OPTARG#*=}"
                         RulePrefixEnv=""
+                        ;;
+                    "anyconnect-vpn-address")
+                        AnyconnectVpnAddress="${OPTARG#*=}"
                         ;;
                     *)
                         if [[ "$argKeyLong" =~ ^jenkins_ ]];then
@@ -312,7 +318,12 @@ function ciscoAnyconnectVPN_func() {
         return 2
     fi
     local errorCountNum=0
-    vpnAddress="$(getEnv "$envName")"
+    local vpnAddress=""
+    if [[ "$AnyconnectVpnAddress" != "" ]];then
+        vpnAddress="$AnyconnectVpnAddress"
+    else
+        vpnAddress="$(getEnv "$envName")"
+    fi
     if [[ "$vpnAddress" == "" ]];then
         while read -p "请输入VPN连接的服务器地址:" -r vpnServerAddress ;do
             if [[ "$vpnServerAddress" != "" ]];then
